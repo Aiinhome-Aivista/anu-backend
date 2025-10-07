@@ -4,27 +4,27 @@ from database.db_handler import get_db_connection
 def login_hiring_manager():
     try:
         data = request.get_json()
-        if not data or "Email" not in data:
+        if not data or "email" not in data:
             return jsonify({
                 "status": "failed",
                 "statusCode": 400,
-                "message": "Email is required.",
+                "message": "email is required.",
                 "isSuccess": False
             }), 400
 
-        email = data["Email"]
+        email = data["email"]
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        cursor.execute("SELECT * FROM applicationuser WHERE Email = %s", (email,))
+        cursor.execute("SELECT * FROM applicationuser WHERE email = %s", (email,))
         user = cursor.fetchone()
 
         if not user:
             return jsonify({
                 "status": "failed",
                 "statusCode": 404,
-                "message": "Login failed. Email not found.",
+                "message": "Login failed. email not found.",
                 "isSuccess": False
             }), 404
 

@@ -1,39 +1,38 @@
 from flask import request, jsonify
 from database.db_handler import get_db_connection
 
-def candidate_details():
+def get_jobs_candidate_applied(candidateID):
     try:
-        data = request.get_json()
-        if not data or "email" not in data:
+        if not candidateID:
             return jsonify({
                 "status": "failed",
                 "statusCode": 400,
-                "message": "email is required.",
+                "message": "CandidateID is required.",
                 "isSuccess": False
             }), 400
-
-        email = data["email"]
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        cursor.execute("SELECT * FROM candidateprofile WHERE email = %s", (email,))
-        candidate = cursor.fetchone()
+        # Fetch jobs applied by the candidate
+        cursor.execute("SELECT * FROM v_hm_candidate_job_mapping WHERE CandidateId = %s", (candidateID,))
+        applied_jobs = cursor.fetchall()
 
-        if not candidate:
+        if not applied_jobs:
             return jsonify({
                 "status": "failed",
                 "statusCode": 404,
-                "message": "Candidate not found.",
-                "isSuccess": False
+                "message": f"No applied job details found for CandidateID {candidateID}.",
+                "isSuccess": False,
+                "result": None
             }), 404
 
         return jsonify({
             "status": "success",
             "statusCode": 200,
-            "message": "Candidate details retrieved successfully.",
+            "message": f"Applied jobs retrieved successfully for CandidateID {candidateID}.",
             "isSuccess": True,
-            "result": candidate
+            "result": applied_jobs
         }), 200
 
     except Exception as e:

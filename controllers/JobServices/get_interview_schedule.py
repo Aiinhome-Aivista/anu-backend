@@ -1,39 +1,50 @@
 from flask import request, jsonify
 from database.db_handler import get_db_connection
 
-def candidate_details():
+
+
+
+
+
+def get_interview_schedule():
     try:
         data = request.get_json()
-        if not data or "email" not in data:
+        if not data or "jobId" not in data or "CandidateId" not in data:
             return jsonify({
                 "status": "failed",
                 "statusCode": 400,
-                "message": "email is required.",
+                "message": "Invalid input data. 'jobId' and 'CandidateId' are required.",
                 "isSuccess": False
             }), 400
 
-        email = data["email"]
+        jobId = data["jobId"]
+        candidateId = data["CandidateId"]
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        cursor.execute("SELECT * FROM candidateprofile WHERE email = %s", (email,))
-        candidate = cursor.fetchone()
+        cursor.execute("""
+            SELECT * 
+            FROM v_hm_candidate_meeting 
+            WHERE JobId = %s AND CandidateId = %s
+        """, (jobId, candidateId))
+        schedule = cursor.fetchall()
 
-        if not candidate:
+        if not schedule:
             return jsonify({
                 "status": "failed",
                 "statusCode": 404,
-                "message": "Candidate not found.",
-                "isSuccess": False
+                "message": f"No interview schedule found for JobId {jobId} and CandidateId {candidateId}.",
+                "isSuccess": False,
+                "result": None
             }), 404
 
         return jsonify({
             "status": "success",
             "statusCode": 200,
-            "message": "Candidate details retrieved successfully.",
+            "message": f"Interview schedule retrieved successfully for JobId {jobId} and CandidateId {candidateId}.",
             "isSuccess": True,
-            "result": candidate
+            "result": schedule
         }), 200
 
     except Exception as e:

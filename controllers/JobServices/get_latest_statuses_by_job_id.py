@@ -1,39 +1,38 @@
 from flask import request, jsonify
 from database.db_handler import get_db_connection
 
-def candidate_details():
+def get_latest_statuses_by_job_id(jobId):
     try:
-        data = request.get_json()
-        if not data or "email" not in data:
+        if not jobId:
             return jsonify({
                 "status": "failed",
                 "statusCode": 400,
-                "message": "email is required.",
+                "message": "JobId is required.",
                 "isSuccess": False
             }), 400
-
-        email = data["email"]
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        cursor.execute("SELECT * FROM candidateprofile WHERE email = %s", (email,))
-        candidate = cursor.fetchone()
+        # Fetch latest statuses for the given JobId
+        cursor.execute("SELECT * FROM v_hm_candidate_shortlisted WHERE JobId = %s", (jobId,))
+        statuses = cursor.fetchall()
 
-        if not candidate:
+        if not statuses:
             return jsonify({
                 "status": "failed",
                 "statusCode": 404,
-                "message": "Candidate not found.",
-                "isSuccess": False
+                "message": f"No statuses found for JobId {jobId}.",
+                "isSuccess": False,
+                "result": None
             }), 404
 
         return jsonify({
             "status": "success",
             "statusCode": 200,
-            "message": "Candidate details retrieved successfully.",
+            "message": f"Statuses retrieved successfully for JobId {jobId}.",
             "isSuccess": True,
-            "result": candidate
+            "result": statuses
         }), 200
 
     except Exception as e:
