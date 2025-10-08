@@ -1,29 +1,31 @@
-from flask import request,jsonify
+from flask import request, jsonify
 from database.db_handler import get_db_connection
 
 def evaluate_mcq():
     try:
         data = request.get_json()
 
-        # Validate request body
-        if not data or "JobId" not in data or "CandidateId" not in data or "Data" not in data:
+        # ✅ Validate request body
+        required_keys = ["jobId", "candidateId", "assessmentId", "data"]
+        if not data or not all(key in data for key in required_keys):
             return jsonify({
                 "status": "failed",
                 "statusCode": 400,
-                "message": "Invalid input data. 'JobId', 'CandidateId', and 'Data' are required.",
+                "message": "Invalid input data. 'jobId', 'candidateId', 'assessmentId', and 'data' are required.",
                 "isSuccess": False
             }), 400
 
-        jobId = data["JobId"]
-        candidateId = data["CandidateId"]
-        mcq_data = data["Data"]
+        jobId = data["jobId"]
+        candidateId = data["candidateId"]
+        assessmentId = data["assessmentId"]
+        mcq_data = data["data"]
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Fetch MCQ data from the database
+        # ✅ Fetch MCQ data for this job
         cursor.execute("""
-            SELECT * 
+            SELECT *
             FROM jdbasedaimcq
             WHERE JobId = %s
         """, (jobId,))
@@ -37,19 +39,18 @@ def evaluate_mcq():
                 "isSuccess": False
             }), 404
 
-        # Calculate correct answers
+        # ✅ Calculate correct answers
         total_questions = len(mcq_data)
         correct_answers = 0
 
         for item in mcq_data:
-            question = next((mcq for mcq in db_mcqs if mcq["Id"] == item["Id"]), None)
-            if question and question["CorrectOption"] == item["SelectedOption"]:
+            question = next((mcq for mcq in db_mcqs if mcq["id"] == item["id"]), None)
+            if question and question["correctOption"].strip().lower() == item["selectedOption"].strip().lower():
                 correct_answers += 1
 
-        # Calculate percentage
         percentage = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
 
-        # Fetch threshold rule
+        # ✅ Fetch threshold rule
         cursor.execute("""
             SELECT RuleValue 
             FROM genericthreshold 
@@ -76,21 +77,22 @@ def evaluate_mcq():
                 "isSuccess": False
             }), 400
 
-        # Determine pass/fail
+        # ✅ Determine pass/fail
         status = "PASSED" if percentage >= rule_value else "FAILED"
-        score = int(percentage) if status == "PASSED" else None
+        score = int(percentage)
 
-        # Call stored procedure (same as C#)
+        # ✅ Call stored procedure (added AssessmentId as 5th parameter)
         cursor.callproc("UpdateProfileJourneyStatus", [
             jobId,
             candidateId,
             "ASSESSMENT",
             status,
-            score
+            score,
+            assessmentId
         ])
         conn.commit()
 
-        # Success response
+        # ✅ Success response
         return jsonify({
             "status": "success",
             "statusCode": 200,
@@ -99,6 +101,7 @@ def evaluate_mcq():
             "result": {
                 "C_ID": candidateId,
                 "J_ID": jobId,
+                "A_ID": assessmentId,
                 "EVENT": "ASSESSMENT",
                 "STATUS": status,
                 "SCORE": score
@@ -120,4 +123,3 @@ def evaluate_mcq():
                 conn.close()
         except:
             pass
-

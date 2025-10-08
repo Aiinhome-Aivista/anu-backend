@@ -3,7 +3,6 @@ from database.db_handler import get_db_connection
 
 def GetAIMCQByJob(AID, jobId, CID):
     try:
-        # Validate input
         if not jobId:
             return jsonify({
                 "status": "failed",
@@ -15,12 +14,12 @@ def GetAIMCQByJob(AID, jobId, CID):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Fetch data where JobId matches
+        #  Fetch actual MCQs instead of assessments
         cursor.execute("""
-            SELECT * 
-            FROM jobassessments
-           WHERE Id = %s AND JobId = %s AND CandidateId = %s
-        """, (AID, jobId, CID))
+            SELECT *
+            FROM jdbasedaimcq
+            WHERE JobId = %s
+        """, (jobId,))
 
         mcq_list = cursor.fetchall()
 
@@ -28,12 +27,11 @@ def GetAIMCQByJob(AID, jobId, CID):
             return jsonify({
                 "status": "failed",
                 "statusCode": 404,
-                "message": "No records found for the given JobId.",
+                "message": "No MCQ records found for the given JobId.",
                 "isSuccess": False,
                 "result": None
             }), 404
 
-        # Return success response
         return jsonify({
             "status": "success",
             "statusCode": 200,
@@ -57,4 +55,3 @@ def GetAIMCQByJob(AID, jobId, CID):
                 conn.close()
         except:
             pass
-
