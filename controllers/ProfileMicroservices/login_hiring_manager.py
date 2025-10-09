@@ -28,7 +28,7 @@ def login_hiring_manager():
                 "isSuccess": False
             }), 404
 
-        if user.get("IsHiringManager") == 1:
+        if user.get("IsHiringManager") == '1':
             return jsonify({
                 "status": "success",
                 "statusCode": 200,

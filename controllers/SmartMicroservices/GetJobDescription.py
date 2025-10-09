@@ -1,11 +1,11 @@
+import os
+import uuid
+import json
+import datetime
+from dotenv import load_dotenv
+import google.generativeai as genai
 from flask import Flask, request, jsonify
 from database.db_handler import get_db_connection
-import uuid
-import datetime
-import google.generativeai as genai
-import json
-import os
-from dotenv import load_dotenv
 
 load_dotenv()
 # ---------- Configure Gemini API Key ----------

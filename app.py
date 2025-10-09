@@ -3,19 +3,25 @@ from flask_cors import CORS
 from controllers.JobServices.get_jobs import match_jobs
 from controllers.ProfileMicroservices.cv_upload import upload_cv
 from controllers.AssessmentMicroservices.evaluate_mcq import evaluate_mcq
+from controllers.JobServices.update_status import update_assessment_status
 from controllers.AssessmentMicroservices.GetAIMCQByJob import GetAIMCQByJob
 from controllers.ProfileMicroservices.login_candidate import login_candidate
 from controllers.ProfileMicroservices.candidate_details import candidate_details
 from controllers.JobServices.get_interview_schedule import get_interview_schedule
+from controllers.JobServices.applied_job_by_candidate import applied_job_by_candidate
+from controllers.RecruiterMicroservices.Recruiter_cv_upload import recruiter_upload_cv
+from controllers.ProfileMicroservices.candidate_profile_update import update_candidate
 from controllers.ProfileMicroservices.login_hiring_manager import login_hiring_manager
 from controllers.JobServices.get_jobs_by_hiring_manager import get_jobs_by_hiring_manager
 from controllers.AssessmentMicroservices.GetByJobAndCandidate import GetByJobAndCandidate
 from controllers.JobServices.get_jobs_candidate_applied import get_jobs_candidate_applied
+from controllers.RecruiterMicroservices.GetJobDetails import get_job_details, get_job_search
 from controllers.JobServices.get_latest_statuses_by_job_id import get_latest_statuses_by_job_id
 from controllers.JobServices.get_details_candidate_applied import get_details_candidate_applied
 from controllers.SmartMicroservices.GetJobDescription import generate_job_description, create_job
 from controllers.JobServices.get_candidate_by_job_and_hiring_manager import get_candidate_by_job_and_hiring_manager
 from controllers.AssessmentMicroservices.call_update_profile_journey_status import call_update_profile_journey_status
+from controllers.RecruiterMicroservices.login_recruiter import login_recruiter
 
 app = Flask(__name__)
 CORS(app)
@@ -23,11 +29,13 @@ CORS(app)
 JOB_SERVICES_URL = '/JobServices'
 SMART_MICROSERVICES_URL = '/SmartMicroservices'
 PROFILE_MICROSERVICES_URL = '/ProfileMicroservices'
+RECRUITER_MICROSERVICES_URL = '/RecruiterMicroservices'
 ASSESSMENT_MICROSERVICES_URL = '/AssessmentMicroservices'
 
 @app.route('/', methods=['GET'])
 def health():
     return "hello world"
+    
 
 
 # Upload candidate CV
@@ -38,7 +46,12 @@ def upload_cv_():
 # Login candidate
 @app.route(PROFILE_MICROSERVICES_URL+'/login/candidate', methods=['POST'])
 def route_login_candidate():
-    return login_candidate()    
+    return login_candidate()
+
+#Candidate profile update
+@app.route(PROFILE_MICROSERVICES_URL + '/candidate/edit', methods=['PUT'])
+def route_update_candidate_route():
+    return update_candidate()        
 
 # Candidate details
 @app.route(PROFILE_MICROSERVICES_URL+'/candidate/details', methods=['POST'])
@@ -48,9 +61,17 @@ def route_candidate_details():
 # Login hiring manager
 @app.route(PROFILE_MICROSERVICES_URL+'/login/hiringManager', methods=['POST'])
 def route_login_hiring_manager():
-    return login_hiring_manager()     
+    return login_hiring_manager()   
+      
 
 
+@app.route(JOB_SERVICES_URL + '/update_status', methods=['POST'])
+def updating_assessment_status():
+    return update_assessment_status()
+
+@app.route(JOB_SERVICES_URL + '/applyJob', methods=['POST'])
+def route_applied_job_by_candidate():
+    return applied_job_by_candidate()
 
 # Get interview schedule for a candidate (POST)
 @app.route(JOB_SERVICES_URL + '/getInterViewSechdule', methods=['POST'])
@@ -119,7 +140,30 @@ def create_job_():
 # Get Job Description 
 @app.route(SMART_MICROSERVICES_URL + '/GetJobDescription', methods=['POST'])
 def generate_job_description_():
-    return generate_job_description()    
+    return generate_job_description()  
+
+
+
+# get job details - Recruiter
+@app.route(RECRUITER_MICROSERVICES_URL+'/GetJobDetais', methods=['GET'])
+def get_job_details_():
+    return get_job_details()
+
+# get job search - Recruiter
+@app.route(RECRUITER_MICROSERVICES_URL+'/getjobsearch', methods=['POST'])
+def get_job_search_():
+    return get_job_search()  
+
+# cv upload - Recruiter
+@app.route(RECRUITER_MICROSERVICES_URL+'/recruiter_upload_cv', methods=['POST'])
+def recruiter_upload_cv_():
+    return recruiter_upload_cv()
+
+# Login - Recruiter
+@app.route(RECRUITER_MICROSERVICES_URL+'/login/recruiter', methods=['POST'])
+def login_recruiter_():
+    return login_recruiter()
+
 
 
 if __name__ == "__main__":  

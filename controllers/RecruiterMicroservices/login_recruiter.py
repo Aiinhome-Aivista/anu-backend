@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from database.db_handler import get_db_connection
 
-def login_candidate():
+def login_recruiter():
     try:
         data = request.get_json()
         if not data or "email" not in data:
@@ -28,7 +28,7 @@ def login_candidate():
                 "isSuccess": False
             }), 404
 
-        if str(user.get("IsHiringManager")) == '0':
+        if str(user.get("IsHiringManager")) == '2':
             return jsonify({
                 "status": "success",
                 "statusCode": 200,
@@ -40,7 +40,7 @@ def login_candidate():
         return jsonify({
             "status": "failed",
             "statusCode": 401,
-            "message": "Login failed. User is not a candidate.",
+            "message": "Login failed. User is not a recruiter.",
             "isSuccess": False
         }), 401
 

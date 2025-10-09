@@ -2,21 +2,30 @@ import os
 import uuid
 import json
 import re
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from flask import request, jsonify
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 import google.generativeai as genai
-import fitz  # PyMuPDF for reading PDF content
+import fitz  
 from database.db_handler import get_db_connection
-load_dotenv()
 
+load_dotenv()
 
 API_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
 
-
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# ---------- Email Configuration ----------
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+
 
 # ---------- Allowed File Extensions ----------
 ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
@@ -32,36 +41,46 @@ def extract_text_from_pdf(filepath):
             text += page.get_text()
     return text
 
-# ---------- Clean Experience Value ----------
-def extract_experience_years(exp_text):
-    """
-    Extracts realistic experience duration (e.g. '5 years') from text.
-    Filters out year-like values (>= 100).
-    """
-    if not exp_text:
-        return ""
 
-    # Find all numbers (like 1, 1.5, 10, 2021)
-    matches = re.findall(r"(\d+(\.\d+)?)", exp_text)
+# ---------- Send Email Function ----------
+def send_confirmation_email(to_email, first_name):
+    try:
+        subject = "Your CV Submission to CrewNest"
+        body = f"""
+Hi {first_name if first_name else ''},
 
-    if not matches:
-        return exp_text.strip()
+Thank you for applying to CrewNest.
+Your CV has been successfully submitted.
 
-    # Convert to float and filter out unrealistic values (e.g., 1900, 2021)
-    years = [float(m[0]) for m in matches if 0 < float(m[0]) <= 50]
+Username: {to_email} (use this email to log in)
 
-    if years:
-        # Pick the highest realistic experience value
-        return f"{int(max(years))} years" if max(years).is_integer() else f"{max(years)} years"
+Our recruitment team will review your profile, and we’ll get back to you soon if your application matches our requirements.
 
-    # If all found numbers were unrealistic (like 2021), return empty
-    return ""
+Best regards,  
+CrewNest HR Team
+"""
+
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            server.send_message(msg)
+
+        print(f"✅ Email sent successfully to {to_email}")
+        return True
+    except Exception as e:
+        print(f"❌ Failed to send email: {str(e)}")
+        return False
 
 
-# ---------- Main Upload Function (No app dependency) ----------
+# ---------- Main Upload Function ----------
 def upload_cv():
     try:
-        # Check if file exists in request
         if 'file' not in request.files:
             return jsonify({"error": "No file part"}), 400
 
@@ -77,12 +96,10 @@ def upload_cv():
         if not allowed_file(file.filename):
             return jsonify({"error": "Invalid file type"}), 400
 
-        # Save file to uploads folder
         filename = secure_filename(file.filename)
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
 
-        # ---------- Extract Text ----------
         if filename.lower().endswith(".pdf"):
             text_content = extract_text_from_pdf(filepath)
         else:
@@ -91,26 +108,29 @@ def upload_cv():
         if not text_content.strip():
             return jsonify({"message": "Failed to extract data from CV"}), 400
 
-        # ---------- Generate JSON using Gemini ----------
         model = genai.GenerativeModel("gemini-2.5-flash")  
         prompt = f"""
-        From the following CV text, extract information in JSON format with these exact keys:
+        You are a CV parsing assistant. 
+        Analyze the following resume text and extract the information in a **clean JSON format** with the following exact keys:
         {{
-          "title": "",
-          "first_name": "",
-          "middle_name": "",
-          "last_name": "",
-          "email": "",
-          "contact": "",
-          "address": "",
-          "latestrole": "",
-          "education": "",
-          "designation": "",
-          "certification": "",
-          "skills": "",
-          "experience": ""
+            "title": "",
+            "first_name": "",
+            "middle_name": "",
+            "last_name": "",
+            "email": "",
+            "contact": "",
+            "address": "",
+            "latestrole": "",
+            "education": "",
+            "designation": "",
+            "certification": "",
+            "skills": "",
+            "experience": ""
         }}
-
+        Instructions:
+        1. Extract the most accurate details for each field.
+        2. For *title*, determine it based on marital status or gender indicators.
+        3. For "experience", calculate or estimate the total professional experience in years.
         CV Text:
         {text_content}
         """
@@ -118,14 +138,12 @@ def upload_cv():
         response = model.generate_content(prompt)
         raw_text = response.text.strip() if response else "{}"
 
-        # Parse Gemini output safely
         try:
             extracted_data = json.loads(raw_text)
         except json.JSONDecodeError:
             cleaned_text = re.sub(r"```(json|JSON)?", "", raw_text).strip("` \n")
             extracted_data = json.loads(cleaned_text or "{}")
 
-        # Ensure all expected keys exist
         expected_keys = [
             "title", "first_name", "middle_name", "last_name", "email",
             "contact", "address", "latestrole", "education", "designation",
@@ -134,13 +152,8 @@ def upload_cv():
         for key in expected_keys:
             extracted_data.setdefault(key, "")
 
-        # Standardize experience field
-        extracted_data["experience"] = extract_experience_years(extracted_data.get("experience", ""))
-
-        # Generate unique candidate ID
         c_guid = str(uuid.uuid4())
 
-        # ---------- Insert into Database ----------
         conn = get_db_connection()
         cursor = conn.cursor()
 
@@ -170,11 +183,29 @@ def upload_cv():
 
         cursor.execute(sql, values)
         conn.commit()
+
+        email_to_insert = extracted_data["email"] or email
+        cursor.execute(
+            "SELECT Id FROM applicationuser WHERE email = %s",
+            (email_to_insert,)
+        )
+        existing = cursor.fetchone()
+        
+        if not existing:
+            cursor.execute(
+                "INSERT INTO applicationuser (email, IsHiringManager) VALUES (%s, %s)",
+                (email_to_insert, '0')
+            )
+            conn.commit()
+
         cursor.close()
         conn.close()
 
+        # ---------- Send Confirmation Email ----------
+        send_confirmation_email(email_to_insert, extracted_data["first_name"])
+
         return jsonify({
-            "message": "CV uploaded successfully"
+            "message": "CV uploaded successfully and confirmation email sent."
         }), 200
 
     except Exception as e:

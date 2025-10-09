@@ -78,6 +78,7 @@ def match_jobs(candidate_id):
             if match_percentage > 0:
                 job_title, job_location = parse_jd(job["jd"])
                 matched_jobs.append({
+                    "Id" : job['id'],
                     "Title": job_title,
                     "match_percentage": f"{match_percentage}%",
                     "location": job_location

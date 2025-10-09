@@ -2,10 +2,6 @@ from flask import request, jsonify
 from database.db_handler import get_db_connection
 
 
-
-
-
-
 def get_interview_schedule():
     try:
         data = request.get_json()
