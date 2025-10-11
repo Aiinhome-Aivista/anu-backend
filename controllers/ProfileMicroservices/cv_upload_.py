@@ -111,9 +111,7 @@ def upload_cv():
         model = genai.GenerativeModel("gemini-2.5-flash")  
         prompt = f"""
         You are a CV parsing assistant. 
-        Analyze the following resume text and extract the information in a **clean JSON format**,
-        where every field value must be a simple string (not a list or object).
-        Use these exact keys:
+        Analyze the following resume text and extract the information in a **clean JSON format** with the following exact keys:
         {{
             "title": "",
             "first_name": "",
@@ -152,14 +150,7 @@ def upload_cv():
             "certification", "skills", "experience"
         ]
         for key in expected_keys:
-            value = extracted_data.get(key, "")
-
-            if isinstance(value, (list, dict)):
-                extracted_data[key] = json.dumps(value, ensure_ascii=False)
-            elif value is None:
-                extracted_data[key] = ""
-            else :
-                extracted_data[key] = str(value)
+            extracted_data.setdefault(key, "")
 
         c_guid = str(uuid.uuid4())
 

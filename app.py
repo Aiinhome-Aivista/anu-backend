@@ -2,10 +2,12 @@ from flask import Flask
 from flask_cors import CORS
 from controllers.JobServices.get_jobs import match_jobs
 from controllers.ProfileMicroservices.cv_upload import upload_cv
+from controllers.JobServices.job_description import job_description
 from controllers.AssessmentMicroservices.evaluate_mcq import evaluate_mcq
 from controllers.JobServices.update_status import update_assessment_status
 from controllers.AssessmentMicroservices.GetAIMCQByJob import GetAIMCQByJob
 from controllers.ProfileMicroservices.login_candidate import login_candidate
+from controllers.RecruiterMicroservices.login_recruiter import login_recruiter
 from controllers.ProfileMicroservices.candidate_details import candidate_details
 from controllers.JobServices.get_interview_schedule import get_interview_schedule
 from controllers.JobServices.applied_job_by_candidate import applied_job_by_candidate
@@ -21,7 +23,8 @@ from controllers.JobServices.get_details_candidate_applied import get_details_ca
 from controllers.SmartMicroservices.GetJobDescription import generate_job_description, create_job
 from controllers.JobServices.get_candidate_by_job_and_hiring_manager import get_candidate_by_job_and_hiring_manager
 from controllers.AssessmentMicroservices.call_update_profile_journey_status import call_update_profile_journey_status
-from controllers.RecruiterMicroservices.login_recruiter import login_recruiter
+
+
 
 app = Flask(__name__)
 CORS(app)
@@ -65,10 +68,17 @@ def route_login_hiring_manager():
       
 
 
+# Candidate Job Description
+@app.route(JOB_SERVICES_URL + "/job_description/<int:candidate_id>", methods=["GET"])
+def route_jobs_description(candidate_id):
+    return job_description(candidate_id)
+
+# Status Updating
 @app.route(JOB_SERVICES_URL + '/update_status', methods=['POST'])
 def updating_assessment_status():
     return update_assessment_status()
 
+# Job Apply
 @app.route(JOB_SERVICES_URL + '/applyJob', methods=['POST'])
 def route_applied_job_by_candidate():
     return applied_job_by_candidate()

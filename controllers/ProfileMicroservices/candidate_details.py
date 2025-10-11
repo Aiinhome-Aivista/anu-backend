@@ -17,6 +17,7 @@ def candidate_details():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
+        # Step 1: Fetch candidate details
         cursor.execute("SELECT * FROM candidateprofile WHERE email = %s", (email,))
         candidate = cursor.fetchone()
 
@@ -28,6 +29,22 @@ def candidate_details():
                 "isSuccess": False
             }), 404
 
+        candidate_id = candidate["id"]
+
+        # Step 2: Fetch match percentage (Score) from jobapplication table
+        cursor.execute("""
+            SELECT AVG(Score) AS avg_score
+            FROM jobapplication
+            WHERE candidateId = %s
+        """, (candidate_id,))
+        score_data = cursor.fetchone()
+
+        match_percentage = round(score_data["avg_score"], 2) if score_data and score_data["avg_score"] is not None else 0.0
+
+        # Step 3: Add match_percentage to candidate data
+        candidate["match_percentage"] = f"{match_percentage}%"
+
+        # Step 4: Return response
         return jsonify({
             "status": "success",
             "statusCode": 200,

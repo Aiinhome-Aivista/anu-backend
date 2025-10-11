@@ -3,31 +3,73 @@ from database.db_handler import get_db_connection
 
 def applied_job_by_candidate():
     try:
-        # Get JSON body
+        # Parse request body
         data = request.get_json()
-        if not data or "job_id" not in data:
+        if not data or "job_id" not in data or "candidate_id" not in data:
             return jsonify({
                 "status": "failed",
                 "statusCode": 400,
-                "message": "job_id is required in request body.",
+                "message": "job_id and candidate_id are required in request body.",
                 "isSuccess": False
             }), 400
 
         job_id = data["job_id"]
+        candidate_id = data["candidate_id"]
 
-        # Get DB connection
+        # Connect to DB
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
-        # Call the stored procedure
-        cursor.callproc("update_job_init_status", [job_id])
-        conn.commit()
+        # Fetch candidate score
+        cursor.execute("""
+            SELECT Score
+            FROM jobapplication
+            WHERE JobId = %s AND CandidateId = %s
+        """, (job_id, candidate_id))
+        result = cursor.fetchone()
 
-        # Optional: you can also fetch rowcount or affected rows if needed
+        if not result:
+            return jsonify({
+                "status": "failed",
+                "statusCode": 404,
+                "message": "No matching job application found.",
+                "isSuccess": False
+            }), 404
+
+        
+         # Convert safely to number
+        try:
+            match_score = float(result.get("Score", 0))
+        except (TypeError, ValueError):
+            match_score = 0  
+
+        # If score < 30 → Not Shortlisted
+        if match_score < 30:
+            cursor.execute("""
+                UPDATE ADANI_TALENT.JobApplication
+                SET LatestStatus = 'Not ShortListed'
+                WHERE JobId = %s AND CandidateId = %s AND LatestStatus = 'Inactive'
+            """, (job_id, candidate_id))
+
+            cursor.execute("""
+                INSERT INTO ADANI_TALENT.JobAssessments (JobId, CandidateId, assessmentSqnc, AssessmentName, Status)
+                VALUES (%s, %s, 1, 'Not Appear', 'Not Shortlisted')
+            """, (job_id, candidate_id))
+
+            conn.commit()
+
+            message = f"Candidate {candidate_id} not shortlisted for Job {job_id} (score: {match_score})."
+
+        else:
+            # Call stored procedure (normal flow)
+            cursor.callproc("update_job_init_status", [job_id, candidate_id])
+            conn.commit()
+            message = f"Job application initialized successfully for CandidateId: {candidate_id}, JobId: {job_id}."
+
         return jsonify({
             "status": "success",
             "statusCode": 200,
-            "message": f"Job initialization status updated successfully for JobId: {job_id}.",
+            "message": message,
             "isSuccess": True
         }), 200
 

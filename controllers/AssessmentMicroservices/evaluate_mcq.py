@@ -30,6 +30,7 @@ def evaluate_mcq():
             WHERE JobId = %s
         """, (jobId,))
         db_mcqs = cursor.fetchall()
+        # print('db_mcqs:',db_mcqs)
 
         if not db_mcqs:
             return jsonify({
@@ -41,14 +42,17 @@ def evaluate_mcq():
 
         # ✅ Calculate correct answers
         total_questions = len(mcq_data)
+        # print('total_questions:',total_questions)
         correct_answers = 0
 
         for item in mcq_data:
             question = next((mcq for mcq in db_mcqs if mcq["id"] == item["id"]), None)
             if question and question["correctOption"].strip().lower() == item["selectedOption"].strip().lower():
                 correct_answers += 1
+            # print('correct_answers:',correct_answers)
 
         percentage = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
+        # print('percentage:',percentage)
 
         # ✅ Fetch threshold rule
         cursor.execute("""
@@ -58,6 +62,7 @@ def evaluate_mcq():
             LIMIT 1
         """)
         threshold = cursor.fetchone()
+        # print('threshold:',threshold)
 
         if not threshold:
             return jsonify({
@@ -80,6 +85,9 @@ def evaluate_mcq():
         # ✅ Determine pass/fail
         status = "PASSED" if percentage >= rule_value else "FAILED"
         score = int(percentage)
+
+        # print('status:',status)
+        # print('score:',score)
 
         # ✅ Call stored procedure (added AssessmentId as 5th parameter)
         cursor.callproc("UpdateProfileJourneyStatus", [

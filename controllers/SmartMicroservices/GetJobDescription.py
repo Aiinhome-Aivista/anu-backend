@@ -186,8 +186,86 @@ def create_job():
         ))
 
         conn.commit()
+
+        # ---------- Fetch the newly inserted job ID ----------
+        cursor.execute("SELECT LAST_INSERT_ID()")
+        job_id = cursor.fetchone()[0]
+
+        # ---------- Generate 3 MCQs using Gemini ----------
+        skills_text = ", ".join(job_primary_skills)
+        prompt_mcq = f"""
+        Generate 3 multiple-choice questions (MCQs) based on the following skills:
+        {skills_text}
+
+        Rules:
+        - Each question must test understanding or application of these skills.
+        - Each question should have exactly 4 options and one correct answer.
+        - The "correctOption" field must contain the **actual correct answer text**, not "A/B/C/D".
+        - Output must be valid JSON, no markdown, no backslashes, no code blocks.
+        - Example format:
+
+        {{
+          "questions": [
+            {{
+              "question": "What does TensorFlow do?",
+              "options": ["A library for machine learning", "A web framework", "A database", "An OS"],
+              "correctOption": "A library for machine learning"
+            }},
+            ...
+          ]
+        }}
+        """
+
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        mcq_response = model.generate_content(prompt_mcq)
+        mcq_text = mcq_response.text.strip()
+
+        # Clean response
+        if mcq_text.startswith("```json"):
+            mcq_text = mcq_text.replace("```json", "", 1).strip()
+        if mcq_text.endswith("```"):
+            mcq_text = mcq_text[:-3].strip()
+
+        try:
+            mcq_json = json.loads(mcq_text)
+            questions = mcq_json.get("questions", [])
+        except Exception:
+            questions = []
+
+        # ---------- Insert each MCQ into adani_talent.jdbasedaimcq ----------
+        if questions:
+            insert_mcq_query = """
+                INSERT INTO adani_talent.jdbasedaimcq 
+                (jobId, question, option1, option2, option3, option4, correctOption)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """
+
+            for q in questions[:3]:  # limit to 3 questions
+                opts = q.get("options", ["", "", "", ""])
+                if len(opts) < 4:
+                    opts += [""] * (4 - len(opts))
+
+                correct_answer = q.get("correctOption", "")
+                # If Gemini mistakenly returns "A"/"B"/"C"/"D", convert it to actual option text
+                if correct_answer.strip().upper() in ["A", "B", "C", "D"]:
+                    index_map = {"A": 0, "B": 1, "C": 2, "D": 3}
+                    correct_answer = opts[index_map.get(correct_answer.strip().upper(), 0)]
+
+                cursor.execute(insert_mcq_query, (
+                    str(job_id),
+                    q.get("question", ""),
+                    opts[0],
+                    opts[1],
+                    opts[2],
+                    opts[3],
+                    correct_answer
+                ))
+
+            conn.commit()
+
         cursor.close()
         conn.close()
+
 
         # ---------- Response ----------
         return jsonify({

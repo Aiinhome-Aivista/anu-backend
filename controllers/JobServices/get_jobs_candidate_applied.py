@@ -21,11 +21,11 @@ def get_jobs_candidate_applied(candidateID):
         if not applied_jobs:
             return jsonify({
                 "status": "failed",
-                "statusCode": 404,
-                "message": f"No applied job details found for CandidateID {candidateID}.",
+                "statusCode": 200,
+                "message": f"No Jobs Applied.",
                 "isSuccess": False,
                 "result": None
-            }), 404
+            }), 200
 
         return jsonify({
             "status": "success",

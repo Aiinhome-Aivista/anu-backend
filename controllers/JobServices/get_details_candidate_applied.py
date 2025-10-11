@@ -22,9 +22,10 @@ def get_details_candidate_applied(jobId):
             return jsonify({
                 "status": "failed",
                 "statusCode": 404,
-                "message": f"No candidate details found for JobId {jobId}.",
+                "message": f"No candidate details found for JobId.",
                 "isSuccess": False,
-                "result": None
+                "result": None,
+                "isShortlisted":False
             }), 404
 
         return jsonify({
@@ -32,7 +33,8 @@ def get_details_candidate_applied(jobId):
             "statusCode": 200,
             "message": f"Candidate details retrieved successfully for JobId {jobId}.",
             "isSuccess": True,
-            "result": details
+            "result": details,
+            "isShortlisted":True
         }), 200
 
     except Exception as e:
