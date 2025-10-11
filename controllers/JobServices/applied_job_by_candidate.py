@@ -44,7 +44,7 @@ def applied_job_by_candidate():
             match_score = 0  
 
         # If score < 30 → Not Shortlisted
-        if match_score < 30:
+        if match_score < 20:
             cursor.execute("""
                 UPDATE ADANI_TALENT.JobApplication
                 SET LatestStatus = 'Not ShortListed'

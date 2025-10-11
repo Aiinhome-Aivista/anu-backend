@@ -130,9 +130,17 @@ def upload_cv():
             "experience": ""
         }}
         Instructions:
-        1. Extract the most accurate details for each field.
-        2. For *title*, determine it based on marital status or gender indicators.
-        3. For "experience", calculate or estimate the total professional experience in years.
+            1. Extract the most accurate details for each field.
+            2. For *title*, determine it based on marital status or gender indicators:
+            - Use *"Mr."* for male candidates.
+            - Use *"Mrs."* for married female candidates.
+            - Use *"Ms."* for unmarried female candidates or if marital status is unclear but name suggests female.
+            - If gender cannot be determined, leave it empty.
+            3. For "experience", **calculate or estimate the total professional experience in years**, using date ranges, durations, or job history if available.
+            - If the end date is "Present" or "Current", calculate experience up to the current date.
+            - If exact duration cannot be determined, return "None".
+            - Example valid values for experience: "2 ", "3.5 ", or "None".
+            4. Ensure JSON is valid and machine-readable.
         CV Text:
         {text_content}
         """

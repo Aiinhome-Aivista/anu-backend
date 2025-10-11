@@ -13,18 +13,21 @@ from controllers.JobServices.get_interview_schedule import get_interview_schedul
 from controllers.JobServices.applied_job_by_candidate import applied_job_by_candidate
 from controllers.RecruiterMicroservices.Recruiter_cv_upload import recruiter_upload_cv
 from controllers.ProfileMicroservices.candidate_profile_update import update_candidate
+from controllers.InterviewMicroservices.candidate_book_slot import book_candidate_slot
 from controllers.ProfileMicroservices.login_hiring_manager import login_hiring_manager
+from controllers.InterviewMicroservices.candidate_get_slots import get_recommended_slots
 from controllers.JobServices.get_jobs_by_hiring_manager import get_jobs_by_hiring_manager
 from controllers.AssessmentMicroservices.GetByJobAndCandidate import GetByJobAndCandidate
 from controllers.JobServices.get_jobs_candidate_applied import get_jobs_candidate_applied
+from controllers.InterviewMicroservices.submit_interview_info import submit_interview_info
 from controllers.RecruiterMicroservices.GetJobDetails import get_job_details, get_job_search
 from controllers.JobServices.get_latest_statuses_by_job_id import get_latest_statuses_by_job_id
 from controllers.JobServices.get_details_candidate_applied import get_details_candidate_applied
 from controllers.SmartMicroservices.GetJobDescription import generate_job_description, create_job
+from controllers.InterviewMicroservices.hiringmanager_choose_slots import add_hiring_manager_slots
+from controllers.InterviewMicroservices.hiringmanager_selected_slots import get_hiring_manager_slots
 from controllers.JobServices.get_candidate_by_job_and_hiring_manager import get_candidate_by_job_and_hiring_manager
 from controllers.AssessmentMicroservices.call_update_profile_journey_status import call_update_profile_journey_status
-
-
 
 app = Flask(__name__)
 CORS(app)
@@ -34,6 +37,7 @@ SMART_MICROSERVICES_URL = '/SmartMicroservices'
 PROFILE_MICROSERVICES_URL = '/ProfileMicroservices'
 RECRUITER_MICROSERVICES_URL = '/RecruiterMicroservices'
 ASSESSMENT_MICROSERVICES_URL = '/AssessmentMicroservices'
+INTERVIEW_MICROSERVICES_URL = '/InterviewtMicroservices'
 
 @app.route('/', methods=['GET'])
 def health():
@@ -173,6 +177,33 @@ def recruiter_upload_cv_():
 @app.route(RECRUITER_MICROSERVICES_URL+'/login/recruiter', methods=['POST'])
 def login_recruiter_():
     return login_recruiter()
+
+
+
+# Interview Info
+@app.route(INTERVIEW_MICROSERVICES_URL + '/submitInterviewInfo', methods=['POST'])
+def submited_interview_info():
+    return submit_interview_info()
+
+# Hiring manager choosing slots
+@app.route(INTERVIEW_MICROSERVICES_URL+'/hiringmanager/choose_slots', methods=['POST'])
+def add_hiring_manager_slots_():
+    return add_hiring_manager_slots()
+
+# Hiring manager selected slots
+@app.route(INTERVIEW_MICROSERVICES_URL+'/hiringmanager/selected_slots/<string:hiringManagerId>', methods=['GET'])
+def get_hiring_manager_slots_(hiringManagerId):
+    return get_hiring_manager_slots(hiringManagerId)
+
+# Candidate get recommended slots
+@app.route(INTERVIEW_MICROSERVICES_URL+'/candidate/recommended_slots', methods=['POST'])
+def get_recommended_slots_():
+    return get_recommended_slots()
+
+# Candidate book slot
+@app.route(INTERVIEW_MICROSERVICES_URL+'/candidate/book_slot', methods=['POST'])
+def book_candidate_slot_():
+    return book_candidate_slot()
 
 
 

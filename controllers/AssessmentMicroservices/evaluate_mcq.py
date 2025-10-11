@@ -54,37 +54,39 @@ def evaluate_mcq():
         percentage = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
         # print('percentage:',percentage)
 
-        # ✅ Fetch threshold rule
-        cursor.execute("""
-            SELECT RuleValue 
-            FROM genericthreshold 
-            WHERE RuleName = 'Shortlist Candidates'
-            LIMIT 1
-        """)
-        threshold = cursor.fetchone()
-        # print('threshold:',threshold)
+        # # ✅ Fetch threshold rule
+        # cursor.execute("""
+        #     SELECT RuleValue 
+        #     FROM genericthreshold 
+        #     WHERE RuleName = 'Shortlist Candidates'
+        #     LIMIT 1
+        # """)
+        # threshold = cursor.fetchone()
+        # # print('threshold:',threshold)
 
-        if not threshold:
-            return jsonify({
-                "status": "failed",
-                "statusCode": 404,
-                "message": "Threshold rule 'Shortlist Candidates' not found.",
-                "isSuccess": False
-            }), 404
+        # if not threshold:
+        #     return jsonify({
+        #         "status": "failed",
+        #         "statusCode": 404,
+        #         "message": "Threshold rule 'Shortlist Candidates' not found.",
+        #         "isSuccess": False
+        #     }), 404
 
-        try:
-            rule_value = float(threshold["RuleValue"])
-        except ValueError:
-            return jsonify({
-                "status": "failed",
-                "statusCode": 400,
-                "message": f"Unable to parse RuleValue: {threshold['RuleValue']}",
-                "isSuccess": False
-            }), 400
+        # try:
+        #     rule_value = float(threshold["RuleValue"])
+        # except ValueError:
+        #     return jsonify({
+        #         "status": "failed",
+        #         "statusCode": 400,
+        #         "message": f"Unable to parse RuleValue: {threshold['RuleValue']}",
+        #         "isSuccess": False
+        #     }), 400
 
         # ✅ Determine pass/fail
-        status = "PASSED" if percentage >= rule_value else "FAILED"
-        score = int(percentage)
+        # status = "PASSED" if percentage >= rule_value else "FAILED"
+        status = "FAILED" if percentage <=25  else "PASSED"
+
+        v_score = int(percentage)
 
         # print('status:',status)
         # print('score:',score)
@@ -95,7 +97,7 @@ def evaluate_mcq():
             candidateId,
             "ASSESSMENT",
             status,
-            score,
+            v_score,
             assessmentId
         ])
         conn.commit()
@@ -112,7 +114,7 @@ def evaluate_mcq():
                 "A_ID": assessmentId,
                 "EVENT": "ASSESSMENT",
                 "STATUS": status,
-                "SCORE": score
+                "SCORE": v_score
             }
         }), 200
 

@@ -191,10 +191,10 @@ def create_job():
         cursor.execute("SELECT LAST_INSERT_ID()")
         job_id = cursor.fetchone()[0]
 
-        # ---------- Generate 3 MCQs using Gemini ----------
+        # ---------- Generate 10 MCQs using Gemini ----------
         skills_text = ", ".join(job_primary_skills)
         prompt_mcq = f"""
-        Generate 3 multiple-choice questions (MCQs) based on the following skills:
+        Generate 10 multiple-choice questions (MCQs) based on the following skills:
         {skills_text}
 
         Rules:
@@ -240,7 +240,7 @@ def create_job():
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """
 
-            for q in questions[:3]:  # limit to 3 questions
+            for q in questions[:10]:  # limit to 10 questions
                 opts = q.get("options", ["", "", "", ""])
                 if len(opts) < 4:
                     opts += [""] * (4 - len(opts))

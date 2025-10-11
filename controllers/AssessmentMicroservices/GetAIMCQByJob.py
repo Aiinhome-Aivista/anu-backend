@@ -1,3 +1,4 @@
+import random
 from flask import request,jsonify
 from database.db_handler import get_db_connection
 
@@ -32,12 +33,13 @@ def GetAIMCQByJob(AID, jobId, CID):
                 "result": None
             }), 404
 
+        random_mcqs=random.sample(mcq_list,min(5,len(mcq_list)))
         return jsonify({
             "status": "success",
             "statusCode": 200,
             "message": "MCQ records retrieved successfully.",
             "isSuccess": True,
-            "result": mcq_list
+            "result": random_mcqs
         }), 200
 
     except Exception as e:
