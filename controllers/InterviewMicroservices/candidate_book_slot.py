@@ -16,7 +16,7 @@ EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 def book_candidate_slot():
     try:
         data = request.get_json()
-        candidate_email = data.get("candidateId")  # this is actually the email
+        candidate_id = data.get("candidateId")  
         job_id = data.get("jobid")
         selected_slot = data.get("selectedslot", {})
 
@@ -26,10 +26,10 @@ def book_candidate_slot():
         start_time = selected_slot.get("startTime")
         end_time = selected_slot.get("endTime")
 
-        if not all([candidate_email, job_id, slot_id]):
+        if not all([candidate_id, job_id, slot_id]):
             return jsonify({
                 "isSuccess": False,
-                "message": "Missing required fields: candidateId (email), jobid, or selectedslot.id",
+                "message": "Missing required fields: candidateId, jobid, or selectedslot.id",
                 "status": "error",
                 "statusCode": 400
             }), 400
@@ -37,22 +37,25 @@ def book_candidate_slot():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Step 1️⃣: Get numeric candidateId from candidateprofile table
+        # Step 1️⃣: Get candidate details from candidateprofile using numeric ID
         cursor.execute("""
-            SELECT id,first_name, last_name  FROM adani_talent.candidateprofile WHERE email = %s
-        """, (candidate_email,))
+            SELECT id, first_name, last_name, email 
+            FROM adani_talent.candidateprofile 
+            WHERE id = %s
+        """, (candidate_id,))
         candidate_row = cursor.fetchone()
         if not candidate_row:
             return jsonify({
                 "isSuccess": False,
-                "message": f"No candidate found with email {candidate_email}",
+                "message": f"No candidate found with ID {candidate_id}",
                 "status": "error",
                 "statusCode": 404
             }), 404
 
         numeric_candidate_id = candidate_row["id"]
+        candidate_email = candidate_row["email"]
         candidate_name = f"{candidate_row['first_name']} {candidate_row['last_name']}".strip()
-        candidate_first_name = candidate_row['first_name']
+        candidate_first_name = candidate_row["first_name"]
 
         # Step 2️⃣: Get hiring manager ID from job table
         cursor.execute("SELECT hiringManagerId, role FROM job WHERE id = %s", (job_id,))
@@ -68,16 +71,17 @@ def book_candidate_slot():
         hiring_manager_id = job_row["hiringManagerId"]
         job_role = job_row["role"]
 
-        # Step 3️⃣: Update slot as booked
+        # Step 3️⃣: Update slot as booked (store candidate email for clarity)
         cursor.execute("""
             UPDATE adani_talent.hiringManagerSelectedSlots
             SET isBooked = 1,
                 candidateId = %s,
+                jobid= %s,
                 updatedOn = NOW()
             WHERE id = %s
-        """, (candidate_email, slot_id))
+        """, (candidate_id, job_id, slot_id))
 
-        # Step 4️⃣: Update jobassessments table using numeric candidate ID
+        # Step 4️⃣: Update jobassessments table
         cursor.execute("""
             UPDATE jobassessments
             SET status = 'Interview Scheduled'
@@ -86,7 +90,7 @@ def book_candidate_slot():
               AND assessmentName = 'Teams Interview'
         """, (job_id, numeric_candidate_id))
 
-        # Step 5️⃣: Update jobapplication table using numeric candidate ID
+        # Step 5️⃣: Update jobapplication table
         cursor.execute("""
             UPDATE jobapplication
             SET LatestStatus = 'Interview Scheduled'
@@ -116,7 +120,7 @@ def book_candidate_slot():
 
         return jsonify({
             "isSuccess": True,
-            "message": f"Slot booked successfully for candidate {candidate_email}.",
+            "message": f"Slot booked successfully for candidate ID {candidate_id}.",
             "status": "success",
             "statusCode": 200
         }), 200
@@ -130,7 +134,7 @@ def book_candidate_slot():
         }), 500
 
 
-def send_interview_emails(candidate_email,candidate_first_name,candidate_name, manager_email, job_id, job_role, date, time_slot, start_time, end_time):
+def send_interview_emails(candidate_email, candidate_first_name, candidate_name, manager_email, job_id, job_role, date, time_slot, start_time, end_time):
     """Send two different CrewNest-branded HTML emails to candidate and hiring manager."""
     meet_link = "https://meet.google.com/bpq-mjdk-wqt"
 
@@ -140,7 +144,7 @@ def send_interview_emails(candidate_email,candidate_first_name,candidate_name, m
     <html>
     <body style="font-family: Arial, sans-serif; color: #333;">
         <h2 style="color: #DFB916;">CrewNest Interview Confirmation</h2>
-        <p>Dear Candidate,</p>
+        <p>Dear {candidate_first_name},</p>
         <p>We’re happy to inform you that your interview for <strong>{job_role}</strong> has been successfully scheduled.</p>
         <p><strong>Interview Details:</strong></p>
         <ul>
@@ -205,5 +209,3 @@ def send_interview_emails(candidate_email,candidate_first_name,candidate_name, m
 
     except Exception as e:
         print("❌ Email send error:", str(e))
-
-

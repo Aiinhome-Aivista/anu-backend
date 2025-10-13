@@ -1,15 +1,15 @@
 import os
-import uuid
-import json
 import re
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from flask import request, jsonify
-from werkzeug.utils import secure_filename
-from dotenv import load_dotenv
-import google.generativeai as genai
+import uuid
 import fitz  
+import json
+import smtplib
+from dotenv import load_dotenv
+from flask import request, jsonify
+import google.generativeai as genai
+from email.mime.text import MIMEText
+from werkzeug.utils import secure_filename
+from email.mime.multipart import MIMEMultipart
 from database.db_handler import get_db_connection
 
 load_dotenv()
@@ -71,10 +71,10 @@ CrewNest HR Team
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             server.send_message(msg)
 
-        print(f"✅ Email sent successfully to {to_email}")
+        print(f"Email sent successfully to {to_email}")
         return True
     except Exception as e:
-        print(f"❌ Failed to send email: {str(e)}")
+        print(f"Failed to send email: {str(e)}")
         return False
 
 
@@ -140,7 +140,14 @@ def upload_cv():
             - If the end date is "Present" or "Current", calculate experience up to the current date.
             - If exact duration cannot be determined, return "None".
             - Example valid values for experience: "2 ", "3.5 ", or "None".
-            4. Ensure JSON is valid and machine-readable.
+            4. 4. For "skills":
+                - Extract only *technical skills* mentioned in the CV.
+                - These can appear under headings such as: Skills, Technical Skills, Core Competencies, Key Expertise, Technical Proficiency, or similar.
+                - Include items like programming languages, frameworks, tools, libraries, databases, cloud platforms, or software.
+                - Exclude non-technical items such as spoken or written languages (e.g., English, Hindi, Bengali, etc.).
+                - Clean and join all valid skills into a *comma-separated string*, e.g.:
+                  "Azure Data Factory, Azure SQL, Node JS, PHP, JavaScript, Angular, React JS, MS SQL, MySQL, SSMS"
+            5. Ensure JSON is valid and machine-readable.
         CV Text:
         {text_content}
         """
@@ -168,11 +175,36 @@ def upload_cv():
                 extracted_data[key] = ""
             else :
                 extracted_data[key] = str(value)
+        # ---------- Cleanup: remove non-technical languages from 'skills' ----------
+        if "skills" in extracted_data:
+            skills_text = extracted_data["skills"]
+            non_technical_langs = [
+                "english", "hindi", "bengali", "french", "spanish", "german",
+                "tamil", "telugu", "marathi", "gujarati", "urdu", "punjabi"
+            ]
+            cleaned = []
+            for skill in [s.strip() for s in skills_text.split(",")]:
+                if not any(lang in skill.lower() for lang in non_technical_langs):
+                    cleaned.append(skill)
+            extracted_data["skills"] = ", ".join(cleaned)
 
         c_guid = str(uuid.uuid4())
 
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        # ---------- Email duplication validation ----------
+        cursor.execute("SELECT Id FROM applicationuser WHERE email = %s", (email,))
+        existing_user = cursor.fetchone()
+        if existing_user:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                "error": "User already exists."
+            }), 400
+
+        if filename.lower().endswith(".pdf"):
+            text_content = extract_text_from_pdf(filepath)
 
         sql = """
         INSERT INTO candidateprofile 

@@ -15,6 +15,7 @@ from controllers.RecruiterMicroservices.Recruiter_cv_upload import recruiter_upl
 from controllers.ProfileMicroservices.candidate_profile_update import update_candidate
 from controllers.InterviewMicroservices.candidate_book_slot import book_candidate_slot
 from controllers.ProfileMicroservices.login_hiring_manager import login_hiring_manager
+from controllers.InterviewMicroservices.join_interview import candidate_join_interview
 from controllers.InterviewMicroservices.candidate_get_slots import get_recommended_slots
 from controllers.JobServices.get_jobs_by_hiring_manager import get_jobs_by_hiring_manager
 from controllers.AssessmentMicroservices.GetByJobAndCandidate import GetByJobAndCandidate
@@ -204,6 +205,10 @@ def get_recommended_slots_():
 @app.route(INTERVIEW_MICROSERVICES_URL+'/candidate/book_slot', methods=['POST'])
 def book_candidate_slot_():
     return book_candidate_slot()
+
+@app.route(INTERVIEW_MICROSERVICES_URL+'/joininterview', methods=['POST'])
+def candidate_join_interview_():
+    return candidate_join_interview()
 
 
 
