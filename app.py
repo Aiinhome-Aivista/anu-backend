@@ -3,6 +3,7 @@ from flask_cors import CORS
 from controllers.JobServices.get_jobs import match_jobs
 from controllers.ProfileMicroservices.cv_upload import upload_cv
 from controllers.JobServices.job_description import job_description
+from controllers.JobServices.get_job_dropdowns import get_job_dropdowns
 from controllers.AssessmentMicroservices.evaluate_mcq import evaluate_mcq
 from controllers.JobServices.update_status import update_assessment_status
 from controllers.AssessmentMicroservices.GetAIMCQByJob import GetAIMCQByJob
@@ -10,6 +11,7 @@ from controllers.ProfileMicroservices.login_candidate import login_candidate
 from controllers.RecruiterMicroservices.login_recruiter import login_recruiter
 from controllers.ProfileMicroservices.candidate_details import candidate_details
 from controllers.JobServices.get_interview_schedule import get_interview_schedule
+from controllers.InterviewMicroservices.get_interview_info import get_interview_info
 from controllers.JobServices.applied_job_by_candidate import applied_job_by_candidate
 from controllers.RecruiterMicroservices.Recruiter_cv_upload import recruiter_upload_cv
 from controllers.ProfileMicroservices.candidate_profile_update import update_candidate
@@ -29,6 +31,7 @@ from controllers.InterviewMicroservices.hiringmanager_choose_slots import add_hi
 from controllers.InterviewMicroservices.hiringmanager_selected_slots import get_hiring_manager_slots
 from controllers.JobServices.get_candidate_by_job_and_hiring_manager import get_candidate_by_job_and_hiring_manager
 from controllers.AssessmentMicroservices.call_update_profile_journey_status import call_update_profile_journey_status
+
 
 app = Flask(__name__)
 CORS(app)
@@ -72,6 +75,11 @@ def route_login_hiring_manager():
     return login_hiring_manager()   
       
 
+
+# Job Dropdown
+@app.route(JOB_SERVICES_URL + "/dropdowns", methods=["GET"])
+def job_dropdowns():
+    return get_job_dropdowns()
 
 # Candidate Job Description
 @app.route(JOB_SERVICES_URL + "/job_description/<int:candidate_id>", methods=["GET"])
@@ -206,9 +214,15 @@ def get_recommended_slots_():
 def book_candidate_slot_():
     return book_candidate_slot()
 
+#  join Interview
 @app.route(INTERVIEW_MICROSERVICES_URL+'/joininterview', methods=['POST'])
 def candidate_join_interview_():
     return candidate_join_interview()
+
+# Interview Result Fetch
+@app.route(INTERVIEW_MICROSERVICES_URL + '/getInterviewInfo/<int:jobId>/<int:candidateId>', methods=['GET'])
+def get_interview_info_route(jobId, candidateId):
+    return get_interview_info(jobId, candidateId)  
 
 
 

@@ -49,7 +49,7 @@ def send_confirmation_email(to_email, first_name):
         body = f"""
 Hi {first_name if first_name else ''},
 
-Thank you for applying to CrewNest.
+Thank you for applying on CrewNest.
 Your CV has been successfully submitted.
 
 Username: {to_email} (use this email to log in)
@@ -85,12 +85,12 @@ def upload_cv():
             return jsonify({"error": "No file part"}), 400
 
         file = request.files['file']
-        email = request.form.get('email')
+        register_email = request.form.get('register_email')
 
         if not file or file.filename == '':
             return jsonify({"error": "No selected file"}), 400
 
-        if not email:
+        if not register_email:
             return jsonify({"error": "Email is required"}), 400
 
         if not allowed_file(file.filename):
@@ -194,7 +194,7 @@ def upload_cv():
         cursor = conn.cursor()
 
         # ---------- Email duplication validation ----------
-        cursor.execute("SELECT Id FROM applicationuser WHERE email = %s", (email,))
+        cursor.execute("SELECT Id FROM applicationuser WHERE email = %s", (register_email,))
         existing_user = cursor.fetchone()
         if existing_user:
             cursor.close()
@@ -209,16 +209,16 @@ def upload_cv():
         sql = """
         INSERT INTO candidateprofile 
         (title, first_name, middle_name, last_name, email, contact, address,
-         latestrole, education, designation, certification, skills, experience, C_GUID, ForDemo)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Y')
+         latestrole, education, designation, certification, skills, experience, C_GUID, ForDemo, register_email)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Y', %s)
         """
 
         values = (
             extracted_data["title"],
-            extracted_data["first_name"],
-            extracted_data["middle_name"],
-            extracted_data["last_name"],
-            extracted_data["email"] or email,
+            extracted_data["first_name"].title(),
+            extracted_data["middle_name"].title(),
+            extracted_data["last_name"].title(),
+            extracted_data["email"] or register_email,
             extracted_data["contact"],
             extracted_data["address"],
             extracted_data["latestrole"],
@@ -227,13 +227,14 @@ def upload_cv():
             extracted_data["certification"],
             extracted_data["skills"],
             extracted_data["experience"],
-            c_guid
+            c_guid,
+            register_email
         )
 
         cursor.execute(sql, values)
         conn.commit()
 
-        email_to_insert = extracted_data["email"] or email
+        email_to_insert = extracted_data["email"] or register_email
         cursor.execute(
             "SELECT Id FROM applicationuser WHERE email = %s",
             (email_to_insert,)

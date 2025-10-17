@@ -65,9 +65,9 @@ CrewNest HR Team
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             server.send_message(msg)
 
-        print(f"✅ Email sent to {to_email}")
+        print(f" Email sent to {to_email}")
     except Exception as e:
-        print(f"❌ Failed to send email to {to_email}: {str(e)}")
+        print(f"Failed to send email to {to_email}: {str(e)}")
 
 def recruiter_upload_cv():
     try:

@@ -3,3 +3,6 @@ venv/
 uploads
 __pycache__/
 /__pycache__/
+controllers/InterviewMicroservices/credentials.json
+credentials.json
+token.pkl

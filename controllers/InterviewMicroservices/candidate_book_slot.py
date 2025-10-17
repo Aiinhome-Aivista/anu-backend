@@ -1,10 +1,14 @@
 import os
 import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from flask import Flask, request, jsonify
-from database.db_handler import get_db_connection
 from datetime import datetime
+from email.mime.text import MIMEText
+from datetime import datetime, timedelta
+from flask import Flask, request, jsonify
+from email.mime.multipart import MIMEMultipart
+from database.db_handler import get_db_connection
+from utils.google_meet import create_google_meet_link
+from email.header import Header
+
 
 # ---------- Email Configuration ----------
 SMTP_SERVER = "smtp.gmail.com"
@@ -37,7 +41,7 @@ def book_candidate_slot():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Step 1️⃣: Get candidate details from candidateprofile using numeric ID
+        # Step 1️: Get candidate details from candidateprofile using numeric ID
         cursor.execute("""
             SELECT id, first_name, last_name, email 
             FROM adani_talent.candidateprofile 
@@ -57,7 +61,7 @@ def book_candidate_slot():
         candidate_name = f"{candidate_row['first_name']} {candidate_row['last_name']}".strip()
         candidate_first_name = candidate_row["first_name"]
 
-        # Step 2️⃣: Get hiring manager ID from job table
+        # Step 2️: Get hiring manager ID from job table
         cursor.execute("SELECT hiringManagerId, role FROM job WHERE id = %s", (job_id,))
         job_row = cursor.fetchone()
         if not job_row:
@@ -71,7 +75,7 @@ def book_candidate_slot():
         hiring_manager_id = job_row["hiringManagerId"]
         job_role = job_row["role"]
 
-        # Step 3️⃣: Update slot as booked (store candidate email for clarity)
+        # Step 3️: Update slot as booked (store candidate email for clarity)
         cursor.execute("""
             UPDATE adani_talent.hiringManagerSelectedSlots
             SET isBooked = 1,
@@ -81,7 +85,7 @@ def book_candidate_slot():
             WHERE id = %s
         """, (candidate_id, job_id, slot_id))
 
-        # Step 4️⃣: Update jobassessments table
+        # Step 4️: Update jobassessments table
         cursor.execute("""
             UPDATE jobassessments
             SET status = 'Interview Scheduled'
@@ -90,7 +94,7 @@ def book_candidate_slot():
               AND assessmentName = 'Teams Interview'
         """, (job_id, numeric_candidate_id))
 
-        # Step 5️⃣: Update jobapplication table
+        # Step 5️: Update jobapplication table
         cursor.execute("""
             UPDATE jobapplication
             SET LatestStatus = 'Interview Scheduled'
@@ -101,7 +105,7 @@ def book_candidate_slot():
 
         conn.commit()
 
-        # Step 6️⃣: Send emails
+        # Step 6️: Send emails
         send_interview_emails(
             candidate_email=candidate_email,
             candidate_name=candidate_name,
@@ -136,7 +140,20 @@ def book_candidate_slot():
 
 def send_interview_emails(candidate_email, candidate_first_name, candidate_name, manager_email, job_id, job_role, date, time_slot, start_time, end_time):
     """Send two different CrewNest-branded HTML emails to candidate and hiring manager."""
-    meet_link = "https://meet.google.com/bpq-mjdk-wqt"
+    
+        # Dynamically generate meet link with manager as host
+    start_dt = datetime.strptime(f"{date} {start_time}", "%Y-%m-%d %H:%M")
+    end_dt = datetime.strptime(f"{date} {end_time}", "%Y-%m-%d %H:%M")
+
+    meet_link = create_google_meet_link(
+    summary=f"Interview for {job_role}",
+    description=f"Interview with {candidate_name}",
+    start_time=start_dt.isoformat(),
+    end_time=end_dt.isoformat()
+    )
+
+    if not meet_link :
+        meet_link = "https://meet.google.com/"  # fallback in case of API error
 
     # ---------- Candidate Email ----------
     candidate_subject = f"Interview Scheduled for {job_role} – on {date}"
@@ -193,19 +210,21 @@ def send_interview_emails(candidate_email, candidate_first_name, candidate_name,
             msg_c = MIMEMultipart()
             msg_c["From"] = EMAIL_ADDRESS
             msg_c["To"] = candidate_email
-            msg_c["Subject"] = candidate_subject
-            msg_c.attach(MIMEText(candidate_body, "html"))
+            # msg_c["Subject"] = candidate_subject
+            msg_c["Subject"] = str(Header(candidate_subject, 'utf-8'))
+            msg_c.attach(MIMEText(candidate_body, "html", _charset="utf-8"))
             server.send_message(msg_c)
 
             # Send to hiring manager
             msg_m = MIMEMultipart()
             msg_m["From"] = EMAIL_ADDRESS
             msg_m["To"] = manager_email
-            msg_m["Subject"] = manager_subject
-            msg_m.attach(MIMEText(manager_body, "html"))
+            # msg_m["Subject"] = manager_subject
+            msg_m["Subject"] = str(Header(manager_subject, 'utf-8'))
+            msg_m.attach(MIMEText(manager_body, "html", _charset="utf-8"))
             server.send_message(msg_m)
 
-            print("✅ Emails sent to:", candidate_email, "and", manager_email)
+            print("Emails sent to:", candidate_email, "and", manager_email)
 
     except Exception as e:
-        print("❌ Email send error:", str(e))
+        print("Email send error:", str(e))
