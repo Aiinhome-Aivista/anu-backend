@@ -6,3 +6,8 @@ __pycache__/
 controllers/InterviewMicroservices/credentials.json
 credentials.json
 token.pkl
+
+# audio and json files
+static/audio/
+static/lipsync/
+uploads/

@@ -1,15 +1,15 @@
 import os
+import re
 import uuid
 import json
-import re
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from flask import request, jsonify
-from werkzeug.utils import secure_filename
-from dotenv import load_dotenv
-import google.generativeai as genai
 import fitz  
+import smtplib
+from dotenv import load_dotenv
+from flask import request, jsonify
+import google.generativeai as genai
+from email.mime.text import MIMEText
+from werkzeug.utils import secure_filename
+from email.mime.multipart import MIMEMultipart
 from database.db_handler import get_db_connection
 
 load_dotenv()
@@ -41,18 +41,18 @@ def send_confirmation_email(to_email, first_name):
     try:
         subject = "CV Submission Confirmation - CrewNest"
         body = f"""
-Hi {first_name},
+    Hi {first_name},
 
-Thank you for applying to CrewNest.
-Your CV has been successfully submitted.
+    Thank you for applying to CrewNest.
+    Your CV has been successfully submitted.
 
-Username: {to_email} (for login)
+    Username: {to_email} (for login)
 
-Our recruitment team will review your profile, and we’ll get back to you soon if your application matches our requirements.
+    Our recruitment team will review your profile, and we’ll get back to you soon if your application matches our requirements.
 
-Best regards,  
-CrewNest HR Team
-        """
+    Best regards,  
+    CrewNest HR Team
+            """
 
         msg = MIMEMultipart()
         msg["From"] = EMAIL_ADDRESS
@@ -208,11 +208,17 @@ def recruiter_upload_cv():
              latestrole, education, designation, certification, skills, experience, C_GUID, ForDemo)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Y')
             """
+            # Suppose extracted_data has full name in all caps
+            full_name = extracted_data["first_name"] + " " + extracted_data["middle_name"] + " " + extracted_data["last_name"]
+
+            # Proper capitalization
+            formatted_name = full_name.title() 
+
             values = (
-                extracted_data["title"],
-                extracted_data["first_name"],
-                extracted_data["middle_name"],
-                extracted_data["last_name"],
+                extracted_data["title"], 
+                extracted_data["first_name"].title(),
+                extracted_data["middle_name"].title() if extracted_data["middle_name"] else "",
+                extracted_data["last_name"].title(),
                 extracted_data["email"] or "",
                 extracted_data["contact"],
                 extracted_data["address"],
@@ -224,6 +230,7 @@ def recruiter_upload_cv():
                 extracted_data["experience"],
                 c_guid
             )
+
             cursor.execute(sql, values)
             conn.commit()
             email_to_insert = extracted_data["email"] 

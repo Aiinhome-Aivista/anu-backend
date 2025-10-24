@@ -2,15 +2,18 @@ from flask import Flask
 from flask_cors import CORS
 from controllers.JobServices.get_jobs import match_jobs
 from controllers.ProfileMicroservices.cv_upload import upload_cv
+from controllers.RecruiterMicroservices.Jobsearch import job_search
 from controllers.JobServices.job_description import job_description
 from controllers.JobServices.get_job_dropdowns import get_job_dropdowns
 from controllers.AssessmentMicroservices.evaluate_mcq import evaluate_mcq
 from controllers.JobServices.update_status import update_assessment_status
 from controllers.AssessmentMicroservices.GetAIMCQByJob import GetAIMCQByJob
+from controllers.AssessmentMicroservices.end_interview import end_interview
 from controllers.ProfileMicroservices.login_candidate import login_candidate
 from controllers.RecruiterMicroservices.login_recruiter import login_recruiter
 from controllers.ProfileMicroservices.candidate_details import candidate_details
 from controllers.JobServices.get_interview_schedule import get_interview_schedule
+from controllers.AssessmentMicroservices.start_assessment import start_assessment
 from controllers.InterviewMicroservices.get_interview_info import get_interview_info
 from controllers.JobServices.applied_job_by_candidate import applied_job_by_candidate
 from controllers.RecruiterMicroservices.Recruiter_cv_upload import recruiter_upload_cv
@@ -31,7 +34,6 @@ from controllers.InterviewMicroservices.hiringmanager_choose_slots import add_hi
 from controllers.InterviewMicroservices.hiringmanager_selected_slots import get_hiring_manager_slots
 from controllers.JobServices.get_candidate_by_job_and_hiring_manager import get_candidate_by_job_and_hiring_manager
 from controllers.AssessmentMicroservices.call_update_profile_journey_status import call_update_profile_journey_status
-
 
 app = Flask(__name__)
 CORS(app)
@@ -133,6 +135,16 @@ def route_get_candidate_by_job_and_hiring_manager(jobId, hiringManagerId):
 
 
 
+# Route for ending interview
+@app.route(ASSESSMENT_MICROSERVICES_URL + "/end_interview", methods=["POST"])
+def route_end_interview():
+    return end_interview()
+
+# Start Ai Screening
+@app.route(ASSESSMENT_MICROSERVICES_URL + "/assessment/start", methods=["POST"])
+def start_assessment_route():
+    return start_assessment() 
+
 # Evaluate MCQ
 @app.route(ASSESSMENT_MICROSERVICES_URL + '/EvaluateMCQ', methods=['POST'])
 def route_evaluate_mcq():
@@ -166,6 +178,11 @@ def generate_job_description_():
     return generate_job_description()  
 
 
+
+# Job Search
+@app.route(RECRUITER_MICROSERVICES_URL+'/jobsearch', methods=['GET'])
+def job_search_():
+    return job_search()
 
 # get job details - Recruiter
 @app.route(RECRUITER_MICROSERVICES_URL+'/GetJobDetais', methods=['GET'])
@@ -223,6 +240,7 @@ def candidate_join_interview_():
 @app.route(INTERVIEW_MICROSERVICES_URL + '/getInterviewInfo/<int:jobId>/<int:candidateId>', methods=['GET'])
 def get_interview_info_route(jobId, candidateId):
     return get_interview_info(jobId, candidateId)  
+
 
 
 
