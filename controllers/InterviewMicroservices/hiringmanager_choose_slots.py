@@ -25,7 +25,7 @@ def add_hiring_manager_slots():
         cursor = conn.cursor()
 
         insert_query = """
-            INSERT INTO adani_talent.hiringmanagerselectedslots
+            INSERT INTO hiringmanagerselectedslots
             (hiringManagerId, date, timeSlot, startTime, endTime, isBooked, candidateId, createdBy)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """

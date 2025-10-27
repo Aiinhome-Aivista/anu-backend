@@ -39,7 +39,7 @@ def get_recommended_slots():
         # Step 2: Fetch available slots for this hiring manager
         cursor.execute("""
             SELECT id, date, timeSlot, startTime, endTime
-            FROM adani_talent.hiringManagerSelectedSlots
+            FROM hiringManagerSelectedSlots
             WHERE hiringManagerId = %s AND isBooked = 0
             ORDER BY date, startTime
         """, (hiring_manager_id,))

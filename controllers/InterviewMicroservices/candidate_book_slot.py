@@ -1,13 +1,13 @@
 import os
 import smtplib
 from datetime import datetime
+from email.header import Header
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
 from email.mime.multipart import MIMEMultipart
 from database.db_handler import get_db_connection
 from utils.google_meet import create_google_meet_link
-from email.header import Header
 
 
 # ---------- Email Configuration ----------
@@ -44,7 +44,7 @@ def book_candidate_slot():
         # Step 1️: Get candidate details from candidateprofile using numeric ID
         cursor.execute("""
             SELECT id, first_name, last_name, email 
-            FROM adani_talent.candidateprofile 
+            FROM candidateprofile 
             WHERE id = %s
         """, (candidate_id,))
         candidate_row = cursor.fetchone()
@@ -77,7 +77,7 @@ def book_candidate_slot():
 
         # Step 3️: Update slot as booked (store candidate email for clarity)
         cursor.execute("""
-            UPDATE adani_talent.hiringManagerSelectedSlots
+            UPDATE hiringManagerSelectedSlots
             SET isBooked = 1,
                 candidateId = %s,
                 jobid= %s,

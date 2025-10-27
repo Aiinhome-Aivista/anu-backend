@@ -11,5 +11,5 @@ MYSQL_CONFIG = {
     'database': os.getenv('MYSQL_DATABASE', '')
 }
 
-JWT_SECRET = os.getenv('JWT_SECRET', 'change_me_now')
-JWT_ALGORITHM = os.getenv('JWT_ALGORITHM', 'HS256')
+
+

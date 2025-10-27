@@ -8,7 +8,7 @@ def get_hiring_manager_slots(hiringManagerId):
 
         query = """
             SELECT date, timeSlot, startTime, endTime, isBooked
-            FROM adani_talent.hiringManagerSelectedSlots
+            FROM hiringManagerSelectedSlots
             WHERE hiringManagerId = %s
             ORDER BY date, startTime
         """

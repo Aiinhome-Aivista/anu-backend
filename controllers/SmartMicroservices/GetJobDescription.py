@@ -165,7 +165,7 @@ def create_job():
         cursor = conn.cursor()
 
         insert_query = """
-            INSERT INTO adani_talent.job 
+            INSERT INTO job 
             (j_guid, jd, experience, location, role, primarySkills, secondarySkills, 
              businessDependencies, hiringManagerId, createdBy, createdOn)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -232,10 +232,10 @@ def create_job():
         except Exception:
             questions = []
 
-        # ---------- Insert each MCQ into adani_talent.jdbasedaimcq ----------
+        # ---------- Insert each MCQ into jdbasedaimcq ----------
         if questions:
             insert_mcq_query = """
-                INSERT INTO adani_talent.jdbasedaimcq 
+                INSERT INTO jdbasedaimcq 
                 (jobId, question, option1, option2, option3, option4, correctOption)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """

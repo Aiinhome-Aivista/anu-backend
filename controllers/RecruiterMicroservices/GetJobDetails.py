@@ -49,7 +49,7 @@ def get_job_details():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        query = "SELECT * FROM adani_talent.v_recruiter_job_details"
+        query = "SELECT * FROM v_recruiter_job_details"
         cursor.execute(query)
         rows = cursor.fetchall()
 
@@ -94,7 +94,7 @@ def get_job_details():
 #         conn = get_db_connection()
 #         cursor = conn.cursor(dictionary=True)
 
-#         query = "SELECT * FROM adani_talent.v_recruiter_job_details"
+#         query = "SELECT * FROM v_recruiter_job_details"
 #         cursor.execute(query)
 #         rows = cursor.fetchall()
 
@@ -141,7 +141,7 @@ def get_job_details():
 #         cursor = conn.cursor(dictionary=True)
 
 #         # Query the MySQL view
-#         query = "SELECT * FROM adani_talent.v_recruiter_job_details"
+#         query = "SELECT * FROM v_recruiter_job_details"
 #         cursor.execute(query)
 #         rows = cursor.fetchall()
 
@@ -202,7 +202,7 @@ def get_job_search():
         # Query the MySQL view using the id
         query = """
             SELECT * 
-            FROM adani_talent.v_recruiter_job_search
+            FROM v_recruiter_job_search
             WHERE Id = %s
         """
         cursor.execute(query, (job_id,))

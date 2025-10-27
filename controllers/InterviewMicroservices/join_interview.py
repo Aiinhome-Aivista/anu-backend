@@ -26,7 +26,7 @@ def candidate_join_interview():
         # Fetch booked slot for the given job and candidate
         cursor.execute("""
             SELECT date, timeSlot, startTime, endTime
-            FROM adani_talent.hiringmanagerselectedslots
+            FROM hiringmanagerselectedslots
             WHERE jobid = %s AND candidateId = %s AND isBooked = 1
         """, (job_id, candidate_id))
 
