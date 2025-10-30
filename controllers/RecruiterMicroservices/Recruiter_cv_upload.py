@@ -37,6 +37,32 @@ def extract_text_from_pdf(filepath):
             text += page.get_text()
     return text
 
+def extract_text_from_docx(filepath):
+    try:
+        from docx import Document
+        doc = Document(filepath)
+        text = ""
+        for paragraph in doc.paragraphs:
+            text += paragraph.text + "\n"
+        return text
+    except ImportError:
+        return "DOCX extraction requires python-docx package"
+    except Exception as e:
+        return f"Error reading DOCX file: {str(e)}"
+    
+def extract_text_from_txt(filepath):
+    try:
+        with open(filepath, 'r', encoding='utf-8') as file:
+            return file.read()
+    except UnicodeDecodeError:
+        try:
+            with open(filepath, 'r', encoding='latin-1') as file:
+                return file.read()
+        except Exception as e:
+            return f"Error reading TXT file: {str(e)}"
+    except Exception as e:
+        return f"Error reading TXT file: {str(e)}"
+
 def send_confirmation_email(to_email, first_name):
     try:
         subject = "CV Submission Confirmation - CrewNest"
@@ -101,10 +127,14 @@ def recruiter_upload_cv():
 
             if filename.lower().endswith(".pdf"):
                 text_content = extract_text_from_pdf(filepath)
+            elif filename.lower().endswith(".docx"):
+                text_content = extract_text_from_docx(filepath)
+            elif filename.lower().endswith(".txt"):
+                text_content = extract_text_from_txt(filepath)
             else:
                 text_content = "Non-PDF extraction not implemented"
 
-            if not text_content.strip():
+            if not text_content.strip() or "Error reading" in text_content or "requires" in text_content:
                 results.append({
                     "filename": filename,
                     "status": "failed",

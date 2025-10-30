@@ -1,10 +1,10 @@
+import os
 import re
 import json
-from flask import jsonify
-from database.db_handler import get_db_connection
-import os
 import requests
+from flask import jsonify
 from dotenv import load_dotenv
+from database.db_handler import get_db_connection
 
 load_dotenv()
 
@@ -96,7 +96,7 @@ def parse_jd(jd_text):
 def match_jobs(candidate_id):
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True,buffered=True)
 
         # Step 1: Fetch candidate skills
         cursor.execute("SELECT skills FROM candidateprofile WHERE id = %s", (candidate_id,))
@@ -138,7 +138,7 @@ def match_jobs(candidate_id):
 
                 # Check if already exists in jobapplication
                 cursor.execute("""
-                    SELECT LatestStatus FROM jobapplication 
+                    SELECT LatestStatus, jobmatchscore  FROM jobapplication 
                     WHERE candidateId = %s AND jobId = %s
                 """, (candidate_id, job["id"]))
                 existing = cursor.fetchone()
@@ -158,8 +158,7 @@ def match_jobs(candidate_id):
                 matched_jobs.append({
                     "Id": job["id"],
                     "Title": job_title,
-                    # "match_percentage": f"{match_percentage}%",
-                     "match_percentage": match_percentage,
+                    "match_percentage": f"{match_percentage}%",
                     "location": job_location,
                     "status": latest_status
                 })

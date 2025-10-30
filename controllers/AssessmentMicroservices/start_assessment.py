@@ -25,16 +25,16 @@ BASE_URL = os.getenv("BASE_URL")
 # -----------------------------
 # Dynamic Executable Paths
 # -----------------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Project root is two levels up
-PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, "..", ".."))
+# PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, "..", ".."))
 
-APPS_DIR = os.path.join(PROJECT_ROOT, "apps")
+# APPS_DIR = os.path.join(PROJECT_ROOT, "apps")
 
-FFMPEG_PATH = os.path.join(APPS_DIR, "ffmpeg.exe")
-FFPROBE_PATH = os.path.join(APPS_DIR, "ffprobe.exe")
-RHUBARB_PATH = os.path.join(APPS_DIR, "rhubarb.exe")
+# FFMPEG_PATH = os.path.join(APPS_DIR, "ffmpeg.exe")
+# FFPROBE_PATH = os.path.join(APPS_DIR, "ffprobe.exe")
+# RHUBARB_PATH = os.path.join(APPS_DIR, "rhubarb.exe")
 
 # Generate Edge-tts-audio
 async def generate_neural_audio(text, output_path):
@@ -44,71 +44,71 @@ async def generate_neural_audio(text, output_path):
     await communicate.save(output_path)
 
 # Generate Rhubarb-json
-def generate_lipsync_json(audio_filename, text, session_id, unique_id):
-    try:
-        # Define paths
-        static_lipsync_dir = os.path.join("static", "lipsync")
-        os.makedirs(static_lipsync_dir, exist_ok=True)
+# def generate_lipsync_json(audio_filename, text, session_id, unique_id):
+#     try:
+#         # Define paths
+#         static_lipsync_dir = os.path.join("static", "lipsync")
+#         os.makedirs(static_lipsync_dir, exist_ok=True)
 
-        json_output = os.path.join(static_lipsync_dir, f"response_{session_id}_{unique_id}_lipsync.json")
+#         json_output = os.path.join(static_lipsync_dir, f"response_{session_id}_{unique_id}_lipsync.json")
 
-        # Create dialog text file
-        dialog_file = f"static/audio/dialog_{session_id}_{unique_id}.txt"
-        with open(dialog_file, "w", encoding="utf-8") as f:
-            f.write(text)
+#         # Create dialog text file
+#         dialog_file = f"static/audio/dialog_{session_id}_{unique_id}.txt"
+#         with open(dialog_file, "w", encoding="utf-8") as f:
+#             f.write(text)
 
-        # Use absolute path (safe for all environments)
-        rhubarb_path = os.path.abspath(RHUBARB_PATH)
+#         # Use absolute path (safe for all environments)
+#         rhubarb_path = os.path.abspath(RHUBARB_PATH)
 
-        #print(f"Running Rhubarb from: {rhubarb_path}")  
+#         #print(f"Running Rhubarb from: {rhubarb_path}")  
 
-        if not os.path.exists(rhubarb_path):
-            raise FileNotFoundError(f"Rhubarb executable not found at {rhubarb_path}")
+#         if not os.path.exists(rhubarb_path):
+#             raise FileNotFoundError(f"Rhubarb executable not found at {rhubarb_path}")
 
-        # Convert mp3 to ogg (Rhubarb prefers wav/ogg)
-        ogg_filename = audio_filename.replace(".mp3", ".ogg")
-        subprocess.run(
-            [FFMPEG_PATH, "-y", "-i", audio_filename, ogg_filename],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=True
-        )
+#         # Convert mp3 to ogg (Rhubarb prefers wav/ogg)
+#         ogg_filename = audio_filename.replace(".mp3", ".ogg")
+#         subprocess.run(
+#             [FFMPEG_PATH, "-y", "-i", audio_filename, ogg_filename],
+#             stdout=subprocess.DEVNULL,
+#             stderr=subprocess.DEVNULL,
+#             check=True
+#         )
 
 
-        # Run Rhubarb
-        result = subprocess.run([
-            rhubarb_path,
-            ogg_filename,
-            "-o", json_output,
-            "-d", dialog_file,
-            "-f", "json"
-        ], capture_output=True, text=True)
+#         # Run Rhubarb
+#         result = subprocess.run([
+#             rhubarb_path,
+#             ogg_filename,
+#             "-o", json_output,
+#             "-d", dialog_file,
+#             "-f", "json"
+#         ], capture_output=True, text=True)
 
-        if result.returncode != 0:
-            #print(" Rhubarb Error:", result.stderr)
-            raise RuntimeError(f"Rhubarb failed: {result.stderr}")
+#         if result.returncode != 0:
+#             #print(" Rhubarb Error:", result.stderr)
+#             raise RuntimeError(f"Rhubarb failed: {result.stderr}")
 
-        # Get audio duration
-        info = MediaInfo.parse(ogg_filename)
-        duration = float(info.tracks[0].duration) / 1000 if info.tracks[0].duration else 0.0
+#         # Get audio duration
+#         info = MediaInfo.parse(ogg_filename)
+#         duration = float(info.tracks[0].duration) / 1000 if info.tracks[0].duration else 0.0
 
-        # Append metadata
-        with open(json_output, "r+", encoding="utf-8") as f:
-            data = json.load(f)
-            data["metadata"] = {
-                "soundFile": ogg_filename,
-                "duration": round(duration, 2)
-            }
-            f.seek(0)
-            json.dump(data, f, indent=2)
-            f.truncate()
+#         # Append metadata
+#         with open(json_output, "r+", encoding="utf-8") as f:
+#             data = json.load(f)
+#             data["metadata"] = {
+#                 "soundFile": ogg_filename,
+#                 "duration": round(duration, 2)
+#             }
+#             f.seek(0)
+#             json.dump(data, f, indent=2)
+#             f.truncate()
 
-        os.remove(dialog_file)
-        return json_output, data  
+#         os.remove(dialog_file)
+#         return json_output, data  
 
-    except Exception as e:
-        #print("Rhubarb generation failed:", e)
-        return None, {}
+#     except Exception as e:
+#         #print("Rhubarb generation failed:", e)
+#         return None, {}
 
 # AI Screening
 def start_assessment():
@@ -320,9 +320,9 @@ def start_assessment():
         # -----------------------------
         # Generate Rhubarb JSON
         # -----------------------------
-        unique_id = uuid.uuid4().hex[:6]
-        lipsync_path, rhubarb_json = generate_lipsync_json(audio_path, question_text, session_id, unique_id)
-        lipsync_url = f"{BASE_URL}/static/lipsync/{os.path.basename(lipsync_path)}" if lipsync_path else None
+        # unique_id = uuid.uuid4().hex[:6]
+        # lipsync_path, rhubarb_json = generate_lipsync_json(audio_path, question_text, session_id, unique_id)
+        # lipsync_url = f"{BASE_URL}/static/lipsync/{os.path.basename(lipsync_path)}" if lipsync_path else None
 
 
         # -----------------------------
@@ -331,15 +331,26 @@ def start_assessment():
         qa_pair = {"question": question_text, "answer": last_answer}
 
         if session_valid:
-            # Update existing log (append)
             existing_log = json.loads(session_row["question_answer"])
-            existing_log.append(qa_pair)
 
-            # Get session start time
+            #  Step 1: Fill last unanswered question
+            if last_answer and existing_log and existing_log[-1].get("answer", "") == "":
+                existing_log[-1]["answer"] = last_answer
+            elif last_answer:
+                # If something went out of order
+                existing_log.append({"questionNo": len(existing_log) + 1, "question": "", "answer": last_answer})
+
+            #  Step 2: Append new question
+            existing_log.append({
+                "questionNo": len(existing_log) + 1,
+                "question": question_text,
+                "answer": ""
+            })
+
             created_at = session_row["created_at"]
             current_status = session_row["status"]
 
-            # If interview is active but time expired
+            #  Step 3: Keep your old DB update logic (same as before)
             if current_status == "active" and datetime.now() - created_at > timedelta(minutes=3):
                 cursor.execute("""
                     UPDATE assessment_session_log
@@ -347,7 +358,6 @@ def start_assessment():
                     WHERE id = %s
                 """, (json.dumps(existing_log), "completed", session_row["id"]))
             else:
-                # Otherwise, update question_answer as usual
                 cursor.execute("""
                     UPDATE assessment_session_log
                     SET question_answer = %s
@@ -356,15 +366,14 @@ def start_assessment():
 
             conn.commit()
 
-        qa_pair = {"question": question_text, "answer": last_answer}
-
-        if session_valid:
-            # Update existing log
-            ...
         else:
-            # New session -> generate session_id
+            # New session — same as before
             session_id = str(uuid.uuid4())
-            qa_list = [qa_pair]
+            qa_list = [{
+                "questionNo": 1,
+                "question": question_text,
+                "answer": ""
+            }]
             cursor.execute("""
                 INSERT INTO assessment_session_log (candidate_id, job_id, session_id, question_answer, status)
                 VALUES (%s, %s, %s, %s, %s)
@@ -387,7 +396,7 @@ def start_assessment():
                 "sessionId": session_id,
                 "question": question_text,
                 "audioUrl": audio_url,
-                "lipsyncUrl": lipsync_url,
+                #"lipsyncUrl": lipsync_url,
                 "remainingTime": remaining_time_str
             }
         }), 200
