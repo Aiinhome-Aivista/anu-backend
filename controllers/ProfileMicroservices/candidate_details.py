@@ -1,6 +1,6 @@
 from flask import request, jsonify
 from database.db_handler import get_db_connection
-
+import json
 def candidate_details():
     conn = None
     cursor = None
@@ -19,7 +19,7 @@ def candidate_details():
         jobId = data.get("jobId")  # Make jobId optional using get()
 
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True,buffered=True)
 
         # Step 1: Fetch candidate details
         cursor.execute("SELECT * FROM candidateprofile WHERE email = %s", (email,))
@@ -61,37 +61,69 @@ def candidate_details():
             match_percentage = (score_data["jobmatchscore"]
                                 if score_data and score_data["jobmatchscore"] is not None else 0.0)
             candidate["match_percentage"] = f"{match_percentage}%"
+            
+            
+        #  Fetch AI Screening Score & Details
+            cursor.execute("""
+                SELECT score, question_answer
+                FROM assessment_session_log
+                WHERE candidate_id = %s AND job_id = %s
+            """, (candidate_id, jobId))
+            aiscreening = cursor.fetchone()
+            if aiscreening:
+                candidate["aiscreening_score"] = f"{aiscreening['score']}%"
+                raw_details = aiscreening.get("question_answer")
+                # Safely parse the JSON string from DB
+            if raw_details:
+                try:
+                    candidate["screening_details"] = json.loads(raw_details)
+                except json.JSONDecodeError:
+                    candidate["screening_details"] = []
+            else:
+                candidate["screening_details"] = []
         else:
-            # If no jobId is provided, set match_percentage to None
-            candidate["match_percentage"] = None
+            candidate["aiscreening_score"] = None
+            candidate["screening_details"] = []
 
 
-        # #  Fetch AI Screening Score & Details
-        #     cursor.execute("""
-        #         SELECT score, question_answer
-        #         FROM assessment_session_log
-        #         WHERE candidateId = %s AND jobId = %s
-        #     """, (candidate_id, jobId))
-        #     aiscreening = cursor.fetchone()
-        #     if aiscreening:
-        #         candidate["aiscreening_score"] = aiscreening["score"]
-        #         candidate["screening_details"] = aiscreening["question_answer"]
+      # Step 4: Fetch Assessment score
+        cursor.execute("""
+            SELECT score AS assessment_score
+            FROM jobassessments
+            WHERE candidateId = %s AND jobId = %s AND assessmentName = 'Assessment'
+        """, (candidate_id, jobId))
+        assessment = cursor.fetchone()
 
-        # #  Fetch Assessment Score & Details (with JOIN)
-        #     cursor.execute("""
-        #         SELECT 
-        #             ja.score AS assessment_score,
-        #             af.details AS assessment_details
-        #         FROM jobassessments ja
-        #         JOIN assessmentinfo af 
-        #             ON s.candidateId = d.candidateId AND s.jobId = d.jobId
-        #         WHERE s.candidateId = %s AND s.jobId = %s
-        #     """, (candidate_id, jobId))
+        if assessment:
+            candidate["assessment_score"] = f"{assessment['assessment_score']}%"
 
-        #     assessment = cursor.fetchone()
-        #     if assessment:
-        #         candidate["assessment_score"] = assessment["assessment_score"]
-        #         candidate["assessment_details"] = assessment["assessment_details"]
+            # Step 5: Fetch all question details
+            cursor.execute("""
+                SELECT 
+                    q.question,
+                    a.selectedOption,
+                    q.correctOption
+                FROM assessmentinfo a
+                JOIN jdbasedaimcq q ON a.questionNo = q.id
+                WHERE a.candidateId = %s AND a.jobId = %s
+            """, (candidate_id, jobId))
+            rows = cursor.fetchall()
+
+            # Add serial questionNo
+            assessment_details = []
+            for i, row in enumerate(rows, start=1):
+                assessment_details.append({
+                    "questionNo": i,
+                    "question": row["question"],
+                    "selectedOption": row["selectedOption"],
+                    "correctOption": row["correctOption"]
+                })
+
+            candidate["assessment_details"] = assessment_details
+        else:
+            candidate["assessment_score"] = None
+            candidate["assessment_details"] = []
+
 
 
 
