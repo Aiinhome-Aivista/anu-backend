@@ -2,21 +2,74 @@ import re
 import json
 from flask import jsonify
 from database.db_handler import get_db_connection
+import os
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+MISTRAL_API_URL = os.getenv("MISTRAL_API_URL")
+MISTRAL_MODEL = os.getenv("MISTRAL_MODEL")
+
 
 
 # -------------------------------
 # Utility Function: Fuzzy Match Percentage
 # -------------------------------
-def calculate_match_percentage(candidate_skills, job_skills):
-    candidate_list = [s.strip().lower() for s in candidate_skills.split(',') if s.strip()]
-    job_list = [s.strip().lower() for s in job_skills.split(',') if s.strip()]
-    if not candidate_list or not job_list:
-        return 0.0
-    match_count = sum(1 for c in candidate_list for j in job_list if c in j or j in c)
-    percentage = (match_count / len(job_list)) * 100
-    # Ensure percentage does not exceed 100
-    return round(min(percentage, 100.0), 2)
+# def calculate_match_percentage(candidate_skills, job_skills):
+#     candidate_list = [s.strip().lower() for s in candidate_skills.split(',') if s.strip()]
+#     job_list = [s.strip().lower() for s in job_skills.split(',') if s.strip()]
+#     if not candidate_list or not job_list:
+#         return 0.0
+#     match_count = sum(1 for c in candidate_list for j in job_list if c in j or j in c)
+#     percentage = (match_count / len(job_list)) * 100
+#     # Ensure percentage does not exceed 100
+#     return round(min(percentage, 100.0), 2)
 
+
+def calculate_match_percentage(candidate_skills, job_skills):
+    """
+    Uses Mistral Small model API to calculate skill match percentage.
+    Returns a float (e.g. 78.5)
+    """
+    try:
+        prompt = f"""
+        You are an expert recruiter. 
+        Calculate how well the candidate's skills match the job's required skills.
+        Give ONLY a numeric percentage (0-100) with no text explanation.
+
+        Candidate Skills: {candidate_skills}
+        Job Required Skills: {job_skills}
+        """
+
+        headers = {
+            "Authorization": f"Bearer {MISTRAL_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": MISTRAL_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.3
+        }
+
+        response = requests.post(MISTRAL_API_URL, headers=headers, json=payload)
+        response.raise_for_status()
+
+        result = response.json()
+        raw_output = result["choices"][0]["message"]["content"].strip()
+
+        # Extract only numeric part (e.g. “85%” or “85.3”)
+        match = re.search(r"(\d+(\.\d+)?)", raw_output)
+        if match:
+            return round(float(match.group(1)), 2)
+        else:
+            return 0.0
+
+    except Exception as e:
+        print("⚠️ Mistral API error:", e)
+        return 0.0
 
 # -------------------------------
 # JD Parsing Utility
@@ -76,7 +129,10 @@ def match_jobs(candidate_id):
 
         # Step 3: Process each job
         for job in jobs:
-            match_percentage = calculate_match_percentage(candidate_skills, job["primarySkills"])
+            match_percentage = calculate_match_percentage(candidate_skills, job["primarySkills"]
+            )
+            # print("candidate",candidate_skills)
+            # print("job",job["primarySkills"])
             if match_percentage > 0:
                 job_title, job_location = parse_jd(job["jd"])
 
@@ -90,18 +146,20 @@ def match_jobs(candidate_id):
                 if not existing:
                     # Insert only once (score included)
                     cursor.execute("""
-                        INSERT INTO jobapplication (candidateId, jobId, LatestStatus, Score)
-                        VALUES (%s, %s, 'Inactive', %s)
+                        INSERT INTO jobapplication (candidateId, jobId, LatestStatus, jobmatchscore)
+                        VALUES (%s, %s, 'Inactive',%s)
                     """, (candidate_id, job["id"], match_percentage))
                     conn.commit()
                     latest_status = "Inactive"
                 else:
                     latest_status = existing["LatestStatus"]
+                    match_percentage = existing.get("jobmatchscore", 0.0)
 
                 matched_jobs.append({
                     "Id": job["id"],
                     "Title": job_title,
-                    "match_percentage": f"{match_percentage}%",
+                    # "match_percentage": f"{match_percentage}%",
+                     "match_percentage": match_percentage,
                     "location": job_location,
                     "status": latest_status
                 })

@@ -114,7 +114,7 @@ def generate_lipsync_json(audio_filename, text, session_id, unique_id):
 def start_assessment():
     conn = None
     cursor = None
-    SESSION_DURATION_MINUTES = 10
+    SESSION_DURATION_MINUTES = 3
     remaining_time_str = f"{SESSION_DURATION_MINUTES:02d}:00"
 
     try:
@@ -231,12 +231,12 @@ def start_assessment():
         Skills: {skills}
 
         --- INSTRUCTIONS ---
-        # 1. Greet the candidate naturally (e.g.,"Hi, I’m Subha, your Virtual Chief Operating Officer — nice to meet you! {candidate_name}").
+        # 1. Greet the candidate naturally (e.g.,"Hi, I’m Subho, from your recruitment team — nice to meet you! {candidate_name}").
         # 2. Then ask **exactly ONE question** about their education, in **1-2 short sentences only**.
         # 3. **Do not** add explanations, comments, examples, or multiple questions.
         # 4. **Output only the question text** — no other sentences or instructions.
         # 5. Keep tone friendly, professional, and conversational.
-        1. Greet the candidate naturally (e.g., "Hi, I’m Subha, your Virtual Chief Operating Officer — nice to meet you, {candidate_name}!").
+        1. Greet the candidate naturally (e.g., "Hi, I’m Subho, from your recruitment team — nice to meet you, {candidate_name}!").
         2. Then ask **exactly ONE question** about their education background — such as what they studied, their college experience, or subjects they enjoyed.
         3. **Do NOT mention or refer to any grades, marks, percentages, CGPA, GPA, or scores — focus only on their learning, projects, or experiences.**
         4. **Do not** add explanations, comments, examples, or multiple questions.
@@ -340,7 +340,7 @@ def start_assessment():
             current_status = session_row["status"]
 
             # If interview is active but time expired
-            if current_status == "active" and datetime.now() - created_at > timedelta(minutes=10):
+            if current_status == "active" and datetime.now() - created_at > timedelta(minutes=3):
                 cursor.execute("""
                     UPDATE assessment_session_log
                     SET question_answer = %s, status = %s

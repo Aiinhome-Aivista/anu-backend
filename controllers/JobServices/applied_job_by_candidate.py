@@ -22,7 +22,7 @@ def applied_job_by_candidate():
 
         # Fetch candidate score
         cursor.execute("""
-            SELECT Score
+            SELECT jobmatchscore
             FROM jobapplication
             WHERE JobId = %s AND CandidateId = %s
         """, (job_id, candidate_id))
@@ -39,26 +39,26 @@ def applied_job_by_candidate():
         
          # Convert safely to number
         try:
-            match_score = float(result.get("Score", 0))
+            match_score = float(result.get("jobmatchscore", 0))
         except (TypeError, ValueError):
             match_score = 0  
 
         # If score < 30 → Not Shortlisted
         if match_score < 20:
             cursor.execute("""
-                UPDATE ADANI_TALENT.JobApplication
+                UPDATE jobapplication
                 SET LatestStatus = 'Not ShortListed'
                 WHERE JobId = %s AND CandidateId = %s AND LatestStatus = 'Inactive'
             """, (job_id, candidate_id))
 
             cursor.execute("""
-                INSERT INTO ADANI_TALENT.JobAssessments (JobId, CandidateId, assessmentSqnc, AssessmentName, Status)
+                INSERT INTO jobassessments (JobId, CandidateId, assessmentSqnc, AssessmentName, Status)
                 VALUES (%s, %s, 1, 'Not Appear', 'Not Shortlisted')
             """, (job_id, candidate_id))
 
             conn.commit()
 
-            message = f"Candidate {candidate_id} not shortlisted for Job {job_id} (score: {match_score})."
+            message = f"Candidate {candidate_id} not shortlisted for Job {job_id} (job match score : {match_score})."
 
         else:
             # Call stored procedure (normal flow)

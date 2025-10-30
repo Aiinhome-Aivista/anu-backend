@@ -2,6 +2,9 @@ from flask import request, jsonify
 from database.db_handler import get_db_connection
 
 def candidate_details():
+    conn = None
+    cursor = None
+
     try:
         data = request.get_json()
         if not data or "email" not in data:
@@ -13,6 +16,7 @@ def candidate_details():
             }), 400
 
         email = data["email"]
+        jobId = data.get("jobId")  # Make jobId optional using `get()`
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -30,21 +34,38 @@ def candidate_details():
             }), 404
 
         candidate_id = candidate["id"]
+        
+        # Step 2: If jobId is provided, fetch job details and job match score
+        if jobId:
+            cursor.execute("SELECT * FROM jobapplication WHERE JobId = %s", (jobId,))
+            jobapplication = cursor.fetchone()
 
-        # Step 2: Fetch match percentage (Score) from jobapplication table
-        cursor.execute("""
-            SELECT AVG(Score) AS avg_score
-            FROM jobapplication
-            WHERE candidateId = %s
-        """, (candidate_id,))
-        score_data = cursor.fetchone()
+            if not jobapplication:
+                return jsonify({
+                    "status": "failed",
+                    "statusCode": 404,
+                    "message": "Job not found.",
+                    "isSuccess": False
+                }), 404
 
-        match_percentage = round(score_data["avg_score"], 2) if score_data and score_data["avg_score"] is not None else 0.0
+            job_id = jobapplication["JobId"]
 
-        # Step 3: Add match_percentage to candidate data
-        candidate["match_percentage"] = f"{match_percentage}%"
+            # Fetch match percentage (Score) from jobapplication table
+            cursor.execute("""
+                SELECT jobmatchscore
+                FROM jobapplication
+                WHERE candidateId = %s AND JobId = %s
+            """, (candidate_id, job_id))
+            score_data = cursor.fetchone()
 
-        # Step 4: Return response
+            match_percentage = (score_data["jobmatchscore"]
+                                if score_data and score_data["jobmatchscore"] is not None else 0.0)
+            candidate["match_percentage"] = f"{match_percentage}%"
+        else:
+            # If no jobId is provided, set match_percentage to None
+            candidate["match_percentage"] = None
+
+        # Step 3: Return response with candidate details
         return jsonify({
             "status": "success",
             "statusCode": 200,
@@ -63,7 +84,7 @@ def candidate_details():
 
     finally:
         try:
-            if conn.is_connected():
+            if conn and conn.is_connected():
                 cursor.close()
                 conn.close()
         except:

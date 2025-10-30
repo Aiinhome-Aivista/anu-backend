@@ -1,6 +1,6 @@
+from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
 from database.db_handler import get_db_connection
-
 
 
 def get_recommended_slots():
@@ -36,13 +36,20 @@ def get_recommended_slots():
 
         hiring_manager_id = job_row["hiringManagerId"]
 
-        # Step 2: Fetch available slots for this hiring manager
+        # Step 2: Define the global date (next day of current date)
+        current_date = datetime.now().date()
+        global_date = current_date + timedelta(days=1)
+
+        # Step 3: Fetch available slots from that global date onwards
         cursor.execute("""
             SELECT id, date, timeSlot, startTime, endTime
-            FROM hiringManagerSelectedSlots
-            WHERE hiringManagerId = %s AND isBooked = 0
+            FROM hiringmanagerselectedslots
+            WHERE hiringManagerId = %s 
+              AND isBooked = 0 
+              AND date >= %s
             ORDER BY date, startTime
-        """, (hiring_manager_id,))
+        """, (hiring_manager_id, global_date))
+
         slots = cursor.fetchall()
 
         cursor.close()
@@ -59,8 +66,10 @@ def get_recommended_slots():
             else:
                 return str(t)
 
+        # Step 4: Prepare recommended slots
         recommended_slots = [
-            {"id": slot["id"],
+            {
+                "id": slot["id"],
                 "date": str(slot["date"]),
                 "timeSlot": slot["timeSlot"],
                 "startTime": format_time(slot["startTime"]),
@@ -69,16 +78,31 @@ def get_recommended_slots():
             for slot in slots
         ]
 
+        # Step 5: If no slots available, return proper validation message
+        if not recommended_slots:
+            return jsonify({
+                "isSuccess": False,
+                "message": "No Slots Available.",
+                "status": "error",
+                "statusCode": 404,
+                "candidateId": candidate_id,
+                "jobid": job_id,
+                "hiringManagerId": hiring_manager_id,
+                "globalDate": str(global_date)
+            }), 404
+
+        # Step 6: Return successful response
         return jsonify({
             "candidateId": candidate_id,
             "jobid": job_id,
             "hiringManagerId": hiring_manager_id,
             "isSuccess": True,
-            "message": "Data fetched successfully." if slots else "No available slots found.",
+            "message": "Data fetched successfully.",
             "recommendedSlots": recommended_slots,
             "status": "success",
             "statusCode": 200,
             "timezone": "IST",
+            "globalDate": str(global_date),
             "totalSlots": len(recommended_slots)
         }), 200
 
@@ -89,5 +113,3 @@ def get_recommended_slots():
             "status": "error",
             "statusCode": 500
         }), 500
-
-

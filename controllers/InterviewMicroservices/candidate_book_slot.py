@@ -77,7 +77,7 @@ def book_candidate_slot():
 
         # Step 3️: Update slot as booked (store candidate email for clarity)
         cursor.execute("""
-            UPDATE hiringManagerSelectedSlots
+            UPDATE hiringmanagerselectedslots
             SET isBooked = 1,
                 candidateId = %s,
                 jobid= %s,

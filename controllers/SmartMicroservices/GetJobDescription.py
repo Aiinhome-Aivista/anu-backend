@@ -32,7 +32,7 @@ def generate_job_description():
         job_title = data.get("jobTitle")
         job_experience = data.get("jobExperienceRequired")
         job_location = data.get("jobLocation")
-        job_primary_skills = data.get("jobPrimarySkills", [])
+        job_primary_skills = data.get("jobPrimarySkills")
         job_secondary_skills = data.get("jobSecondarySkills", [])
         job_edu_qualifications = data.get("jobEducationalQualifications", [])
         job_business_dependencies = data.get("jobBusinessDependencies")
@@ -154,11 +154,18 @@ def create_job():
         j_guid = str(uuid.uuid4())
         created_by = job_hiring_manager
 
+        
+
         # Ensure JD is a string (already stringified from generate_job_description)
         if not isinstance(job_description_text, str):
             jd_str = json.dumps(job_description_text, ensure_ascii=False)
         else:
             jd_str = job_description_text
+
+        job_primary_skills_str = ", ".join(job_primary_skills) if isinstance(job_primary_skills, list) else job_primary_skills
+
+        job_secondary_skills_str = ", ".join(job_secondary_skills) if isinstance(job_secondary_skills, list) else job_secondary_skills
+        
 
         # ---------- Insert into Database ----------
         conn = get_db_connection()
@@ -177,8 +184,8 @@ def create_job():
             job_experience,
             job_location,
             job_role,
-            json.dumps(job_primary_skills),
-            json.dumps(job_secondary_skills),
+            job_primary_skills_str,
+            job_secondary_skills_str,
             job_business_dependencies,
             job_hiring_manager,
             created_by,
