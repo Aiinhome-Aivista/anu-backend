@@ -70,6 +70,7 @@ def candidate_details():
                 WHERE candidate_id = %s AND job_id = %s
             """, (candidate_id, jobId))
             aiscreening = cursor.fetchone()
+            raw_details =  None
             if aiscreening:
                 candidate["aiscreening_score"] = f"{aiscreening['score']}%"
                 raw_details = aiscreening.get("question_answer")
