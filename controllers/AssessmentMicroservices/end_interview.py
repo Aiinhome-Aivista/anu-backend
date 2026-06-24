@@ -6,12 +6,9 @@ from datetime import datetime
 from flask import request, jsonify
 from database.db_handler import get_db_connection
 from dotenv import load_dotenv
+from llm_utils import get_mistral_config
 
 load_dotenv()
-
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
-MISTRAL_API_URL = os.getenv("MISTRAL_API_URL")
-MISTRAL_MODEL = os.getenv("MISTRAL_MODEL")
 
 
 def get_ai_score(question_answer):
@@ -40,9 +37,9 @@ def get_ai_score(question_answer):
         if len(non_empty_answers) == 0:
             return 0
 
-        #  Ensure Mistral environment vars exist
-        if not MISTRAL_API_URL or not MISTRAL_API_KEY or not MISTRAL_MODEL:
-            raise ValueError("Mistral API configuration missing in environment variables.")
+        config = get_mistral_config()
+        if not config["url"] or not config["model"]:
+            raise ValueError("Mistral configuration missing in environment variables.")
 
         #  Create intelligent prompt for AI evaluation
         prompt = f"""
@@ -69,13 +66,8 @@ def get_ai_score(question_answer):
             Return ONLY the final score as a single integer (1–100). Do not include text or explanation.
             """
 
-        headers = {
-            "Authorization": f"Bearer {MISTRAL_API_KEY}",
-            "Content-Type": "application/json",
-        }
-
         payload = {
-            "model": MISTRAL_MODEL,
+            "model": config["model"],
             "messages": [
                 {"role": "system", "content": "You are an intelligent evaluation model."},
                 {"role": "user", "content": prompt}
@@ -84,7 +76,7 @@ def get_ai_score(question_answer):
             "max_tokens": 10
         }
 
-        response = requests.post(MISTRAL_API_URL, headers=headers, json=payload, timeout=30)
+        response = requests.post(config["url"], headers=config["headers"], json=payload, timeout=30)
 
         if response.status_code != 200:
             raise Exception(f"Mistral API error: {response.status_code} - {response.text}")

@@ -13,12 +13,9 @@ from pymediainfo import MediaInfo
 from datetime import datetime, timedelta
 from flask import request, jsonify, current_app
 from database.db_handler import get_db_connection
+from llm_utils import get_mistral_config
 
 load_dotenv()
-
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
-MISTRAL_API_URL = os.getenv("MISTRAL_API_URL")
-MISTRAL_MODEL = os.getenv("MISTRAL_MODEL")
 
 BASE_URL = os.getenv("BASE_URL")
 
@@ -279,17 +276,14 @@ def start_assessment():
         # -----------------------------
         # Call Mistral API
         # -----------------------------
-        headers = {
-            "Authorization": f"Bearer {MISTRAL_API_KEY}",
-            "Content-Type": "application/json"
-        }
+        config = get_mistral_config()
         payload = {
-            "model": MISTRAL_MODEL,
+            "model": config["model"],
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.7
         }
 
-        response = requests.post(MISTRAL_API_URL, headers=headers, json=payload)
+        response = requests.post(config["url"], headers=config["headers"], json=payload)
         response.raise_for_status()
         result = response.json()
 
