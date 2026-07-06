@@ -24,6 +24,8 @@ def get_mistral_config(mode=None):
     active = (mode or ACTIVE_LLM or "mistral_local").strip().lower()
     if active == "mistral_local":
         url = MISTRAL_LOCAL_URL or MISTRAL_API_URL
+        if url and not url.endswith("/api/chat"):
+            url = url.rstrip("/") + "/api/chat"
         model = MISTRAL_LOCAL_MODEL or MISTRAL_MODEL
     elif active == "mistral_cloud":
         url = MISTRAL_API_URL

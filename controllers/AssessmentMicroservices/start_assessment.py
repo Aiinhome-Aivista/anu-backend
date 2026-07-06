@@ -5,10 +5,13 @@ import base64
 import asyncio
 import requests
 import tempfile
+# pyrefly: ignore [missing-import]
 import edge_tts  
 import subprocess
 from dotenv import load_dotenv
+# pyrefly: ignore [missing-import]
 import speech_recognition as sr
+# pyrefly: ignore [missing-import]
 from pymediainfo import MediaInfo
 from datetime import datetime, timedelta
 from flask import request, jsonify, current_app
@@ -280,7 +283,8 @@ def start_assessment():
         payload = {
             "model": config["model"],
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.7
+            "temperature": 0.7,
+            "stream": False
         }
 
         response = requests.post(config["url"], headers=config["headers"], json=payload)
@@ -290,6 +294,10 @@ def start_assessment():
         question_text = None
         if "choices" in result and len(result["choices"]) > 0:
             question_text = result["choices"][0]["message"]["content"].strip()
+        elif "message" in result:
+            question_text = result["message"]["content"].strip()
+        elif "response" in result:
+            question_text = result["response"].strip()
         elif "output" in result:
             question_text = result["output"].strip()
 

@@ -43,14 +43,25 @@ def calculate_match_percentage(candidate_skills, job_skills):
         payload = {
             "model": config["model"],
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.3
+            "temperature": 0.3,
+            "stream": False
         }
 
+        print(f"Calling Mistral API URL: {config['url']}")
         response = requests.post(config["url"], headers=config["headers"], json=payload)
         response.raise_for_status()
 
         result = response.json()
-        raw_output = result["choices"][0]["message"]["content"].strip()
+        
+        if "choices" in result:
+            raw_output = result["choices"][0]["message"]["content"].strip()
+        elif "message" in result:
+            raw_output = result["message"]["content"].strip()
+        elif "response" in result:
+            raw_output = result["response"].strip()
+        else:
+            print(f"Unexpected API response format: {result}")
+            return 0.0
 
         # Extract only numeric part (e.g. “85%” or “85.3”)
         match = re.search(r"(\d+(\.\d+)?)", raw_output)
@@ -86,6 +97,7 @@ def parse_jd(jd_text):
 # Unified API → Match + Insert only (No update)
 # -------------------------------
 def match_jobs(candidate_id):
+    print(f"--- Starting match_jobs for candidate_id: {candidate_id} ---")
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True,buffered=True)
@@ -94,6 +106,7 @@ def match_jobs(candidate_id):
         cursor.execute("SELECT skills FROM candidateprofile WHERE id = %s", (candidate_id,))
         candidate = cursor.fetchone()
         if not candidate:
+            print(f"Candidate {candidate_id} not found.")
             return jsonify({
                 "isSuccess": False,
                 "message": f"No candidate found with id {candidate_id}",
@@ -103,12 +116,14 @@ def match_jobs(candidate_id):
             })
 
         candidate_skills = candidate["skills"]
+        print(f"Candidate skills fetched: {candidate_skills}")
 
         # Step 2: Fetch all jobs
         cursor.execute("SELECT id, primarySkills, jd FROM job")
         jobs = cursor.fetchall()
 
         if not jobs:
+            print("No jobs found in the database.")
             return jsonify({
                 "isSuccess": False,
                 "message": "No jobs found in the database",
@@ -118,11 +133,14 @@ def match_jobs(candidate_id):
             })
 
         matched_jobs = []
+        print(f"Total jobs fetched: {len(jobs)}")
 
         # Step 3: Process each job
         for job in jobs:
+            print(f"\nProcessing Job ID: {job['id']}")
             match_percentage = calculate_match_percentage(candidate_skills, job["primarySkills"]
             )
+            print(f"Match percentage for Job ID {job['id']}: {match_percentage}%")
             # print("candidate",candidate_skills)
             # print("job",job["primarySkills"])
             if match_percentage > 0:
@@ -137,6 +155,7 @@ def match_jobs(candidate_id):
 
                 if not existing:
                     # Insert only once (score included)
+                    print(f"Inserting new job application for candidate {candidate_id} and Job {job['id']} with match {match_percentage}%")
                     cursor.execute("""
                         INSERT INTO jobapplication (candidateId, jobId, LatestStatus, jobmatchscore)
                         VALUES (%s, %s, 'Inactive',%s)
@@ -146,6 +165,7 @@ def match_jobs(candidate_id):
                 else:
                     latest_status = existing["LatestStatus"]
                     match_percentage = existing.get("jobmatchscore", 0.0)
+                    print(f"Job application already exists. Status: {latest_status}, Match: {match_percentage}%")
 
                 matched_jobs.append({
                     "Id": job["id"],
@@ -157,6 +177,7 @@ def match_jobs(candidate_id):
 
         # Step 4: Return response
         if matched_jobs:
+            print(f"Successfully processed {len(matched_jobs)} matching jobs.")
             return jsonify({
                 "isSuccess": True,
                 "message": "Matching jobs processed successfully.",
@@ -165,6 +186,7 @@ def match_jobs(candidate_id):
                 "statusCode": 200
             })
         else:
+            print("No matching jobs found for candidate.")
             return jsonify({
                 "isSuccess": False,
                 "message": "No matching jobs found for candidate.",
@@ -174,6 +196,7 @@ def match_jobs(candidate_id):
             })
 
     except Exception as e:
+        print(f"Error in match_jobs: {str(e)}")
         return jsonify({
             "isSuccess": False,
             "message": str(e),

@@ -73,7 +73,8 @@ def get_ai_score(question_answer):
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.2,
-            "max_tokens": 10
+            "max_tokens": 10,
+            "stream": False
         }
 
         response = requests.post(config["url"], headers=config["headers"], json=payload, timeout=30)
@@ -82,7 +83,16 @@ def get_ai_score(question_answer):
             raise Exception(f"Mistral API error: {response.status_code} - {response.text}")
 
         result = response.json()
-        ai_output = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        
+        ai_output = ""
+        if "choices" in result and len(result["choices"]) > 0:
+            ai_output = result["choices"][0].get("message", {}).get("content", "").strip()
+        elif "message" in result:
+            ai_output = result["message"].get("content", "").strip()
+        elif "response" in result:
+            ai_output = result["response"].strip()
+        elif "output" in result:
+            ai_output = result["output"].strip()
 
         #  Extract and sanitize numeric score from AI output
         try:
