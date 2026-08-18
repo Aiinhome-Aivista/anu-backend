@@ -3,14 +3,19 @@ import uuid
 import json
 import datetime
 from dotenv import load_dotenv
+import requests
 import google.generativeai as genai
 from flask import Flask, request, jsonify
 from database.db_handler import get_db_connection
+from llm_utils import ACTIVE_LLM, get_mistral_config
 
 load_dotenv()
+print(f"\n=== [GLOBAL] Active LLM Loaded: {ACTIVE_LLM} ===\n")
+
 # ---------- Configure Gemini API Key ----------
 Api_key=os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=Api_key)
+if Api_key:
+    genai.configure(api_key=Api_key)
 
 # ---------- Utility: Clean Gemini JSON ----------
 def fix_gemini_result(raw_response):
@@ -39,7 +44,7 @@ def generate_job_description():
         job_role = data.get("jobRole")
         job_type = data.get("jobType")
 
-        # ---------- Generate JD using Gemini ----------
+        # ---------- Generate JD using LLM ----------
         prompt = f"""
         Generate a professional Job Description (max 100 words) for the following role.
         Ensure it’s detailed, concise, and relevant.
@@ -79,9 +84,26 @@ def generate_job_description():
         }}
         """
 
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        response = model.generate_content(prompt)
-        job_description_text = response.text.strip()
+        if ACTIVE_LLM == "gemini":
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            response = model.generate_content(prompt)
+            job_description_text = response.text.strip()
+        else:
+            config = get_mistral_config(ACTIVE_LLM)
+            payload = {
+                "model": config["model"],
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False
+            }
+            res = requests.post(config["url"], json=payload, headers=config["headers"])
+            res.raise_for_status()
+            res_data = res.json()
+            if "choices" in res_data and len(res_data["choices"]) > 0:
+                job_description_text = res_data["choices"][0]["message"]["content"].strip()
+            elif "message" in res_data:
+                job_description_text = res_data["message"].get("content", "").strip()
+            else:
+                job_description_text = res.text.strip()
 
         # ---------- Remove any code block markers ----------
         if job_description_text.startswith("```json"):
@@ -223,9 +245,26 @@ def create_job():
         }}
         """
 
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        mcq_response = model.generate_content(prompt_mcq)
-        mcq_text = mcq_response.text.strip()
+        if ACTIVE_LLM == "gemini":
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            mcq_response = model.generate_content(prompt_mcq)
+            mcq_text = mcq_response.text.strip()
+        else:
+            config = get_mistral_config(ACTIVE_LLM)
+            payload = {
+                "model": config["model"],
+                "messages": [{"role": "user", "content": prompt_mcq}],
+                "stream": False
+            }
+            res = requests.post(config["url"], json=payload, headers=config["headers"])
+            res.raise_for_status()
+            res_data = res.json()
+            if "choices" in res_data and len(res_data["choices"]) > 0:
+                mcq_text = res_data["choices"][0]["message"]["content"].strip()
+            elif "message" in res_data:
+                mcq_text = res_data["message"].get("content", "").strip()
+            else:
+                mcq_text = res.text.strip()
 
         # Clean response
         if mcq_text.startswith("```json"):

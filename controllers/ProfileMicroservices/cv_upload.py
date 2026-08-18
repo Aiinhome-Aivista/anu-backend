@@ -5,17 +5,20 @@ import fitz
 import json
 import smtplib
 from dotenv import load_dotenv
+import requests
 from flask import request, jsonify
 import google.generativeai as genai
 from email.mime.text import MIMEText
 from werkzeug.utils import secure_filename
 from email.mime.multipart import MIMEMultipart
 from database.db_handler import get_db_connection
+from llm_utils import ACTIVE_LLM, get_mistral_config
 
 load_dotenv()
 
 API_KEY = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=API_KEY)
+if API_KEY:
+    genai.configure(api_key=API_KEY)
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -140,7 +143,7 @@ def upload_cv():
         if not text_content.strip() or "Error reading" in text_content or "requires" in text_content:
             return jsonify({"message": "Failed to extract data from CV"}), 400
 
-        model = genai.GenerativeModel("gemini-2.5-flash")  
+        # Removed early instantiation of model
         prompt = f"""
         You are a CV parsing assistant. 
         Analyze the following resume text and extract the information in a **clean JSON format**,
@@ -184,8 +187,26 @@ def upload_cv():
         {text_content}
         """
 
-        response = model.generate_content(prompt)
-        raw_text = response.text.strip() if response else "{}"
+        if ACTIVE_LLM == "gemini":
+            model = genai.GenerativeModel("gemini-2.5-flash")  
+            response = model.generate_content(prompt)
+            raw_text = response.text.strip() if response else "{}"
+        else:
+            config = get_mistral_config(ACTIVE_LLM)
+            payload = {
+                "model": config["model"],
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False
+            }
+            res = requests.post(config["url"], json=payload, headers=config["headers"])
+            res.raise_for_status()
+            res_data = res.json()
+            if "choices" in res_data and len(res_data["choices"]) > 0:
+                raw_text = res_data["choices"][0]["message"]["content"].strip()
+            elif "message" in res_data:
+                raw_text = res_data["message"].get("content", "").strip()
+            else:
+                raw_text = res.text.strip()
 
         try:
             extracted_data = json.loads(raw_text)
