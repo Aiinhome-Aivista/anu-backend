@@ -2,6 +2,7 @@ import os
 import pickle
 from datetime import datetime
 from googleapiclient.discovery import build
+from google.auth.transport.requests import Request
 
 def create_google_meet_link(summary, description, start_time, end_time):
     """
@@ -15,6 +16,13 @@ def create_google_meet_link(summary, description, start_time, end_time):
 
         with open("token.pkl", "rb") as token_file:
             creds = pickle.load(token_file)
+            
+        # Refresh token if it has expired
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            # Save the refreshed credentials
+            with open("token.pkl", "wb") as token:
+                pickle.dump(creds, token)
 
         # Build Calendar API service
         service = build("calendar", "v3", credentials=creds)
