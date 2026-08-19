@@ -5,17 +5,20 @@ import json
 import fitz  
 import smtplib
 from dotenv import load_dotenv
+import requests
 from flask import request, jsonify
 import google.generativeai as genai
 from email.mime.text import MIMEText
 from werkzeug.utils import secure_filename
 from email.mime.multipart import MIMEMultipart
 from database.db_handler import get_db_connection
+from llm_utils import ACTIVE_LLM, get_mistral_config
 
 load_dotenv()
 
 API_KEY = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=API_KEY)
+if API_KEY:
+    genai.configure(api_key=API_KEY)
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -142,7 +145,7 @@ def recruiter_upload_cv():
                 })
                 continue
 
-            model = genai.GenerativeModel("gemini-2.5-flash")  
+            # model definition moved down
             prompt = f"""
             You are a CV parsing assistant. 
             Analyze the following resume text and extract the information in a **clean JSON format** with the following exact keys:
@@ -177,8 +180,26 @@ def recruiter_upload_cv():
             {text_content}
             """
 
-            response = model.generate_content(prompt)
-            raw_text = response.text.strip() if response else "{}"
+            if ACTIVE_LLM == "gemini":
+                model = genai.GenerativeModel("gemini-2.5-flash")
+                response = model.generate_content(prompt)
+                raw_text = response.text.strip() if response else "{}"
+            else:
+                config = get_mistral_config(ACTIVE_LLM)
+                payload = {
+                    "model": config["model"],
+                    "messages": [{"role": "user", "content": prompt}],
+                    "stream": False
+                }
+                res = requests.post(config["url"], json=payload, headers=config["headers"])
+                res.raise_for_status()
+                res_data = res.json()
+                if "choices" in res_data and len(res_data["choices"]) > 0:
+                    raw_text = res_data["choices"][0]["message"]["content"].strip()
+                elif "message" in res_data:
+                    raw_text = res_data["message"].get("content", "").strip()
+                else:
+                    raw_text = res.text.strip()
 
             try:
                 extracted_data = json.loads(raw_text)
@@ -227,8 +248,26 @@ def recruiter_upload_cv():
                 Return only a number (e.g., 78.5) — no extra text.
                 """
 
-                match_response = model.generate_content(match_prompt)
-                match_text = match_response.text.strip()
+                if ACTIVE_LLM == "gemini":
+                    model = genai.GenerativeModel("gemini-2.5-flash")
+                    match_response = model.generate_content(match_prompt)
+                    match_text = match_response.text.strip()
+                else:
+                    config = get_mistral_config(ACTIVE_LLM)
+                    payload = {
+                        "model": config["model"],
+                        "messages": [{"role": "user", "content": match_prompt}],
+                        "stream": False
+                    }
+                    res = requests.post(config["url"], json=payload, headers=config["headers"])
+                    res.raise_for_status()
+                    res_data = res.json()
+                    if "choices" in res_data and len(res_data["choices"]) > 0:
+                        match_text = res_data["choices"][0]["message"]["content"].strip()
+                    elif "message" in res_data:
+                        match_text = res_data["message"].get("content", "").strip()
+                    else:
+                        match_text = res.text.strip()
                 match_percentage = float(re.findall(r"[\d.]+", match_text)[0]) if re.findall(r"[\d.]+", match_text) else 0
 
             # --- Insert candidate record ---
