@@ -85,7 +85,7 @@ def generate_job_description():
         """
 
         if ACTIVE_LLM == "gemini":
-            model = genai.GenerativeModel("gemini-2.5-flash")
+            model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-3.6-flash"))
             response = model.generate_content(prompt)
             job_description_text = response.text.strip()
         else:
@@ -246,7 +246,7 @@ def create_job():
         """
 
         if ACTIVE_LLM == "gemini":
-            model = genai.GenerativeModel("gemini-2.5-flash")
+            model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-3.6-flash"))
             mcq_response = model.generate_content(prompt_mcq)
             mcq_text = mcq_response.text.strip()
         else:

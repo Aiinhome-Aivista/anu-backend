@@ -19,7 +19,7 @@ def update_candidate():
 
         # Call stored procedure
         cursor.callproc("UpdateCandidateProfile", (
-            data["id"],
+            int(data["id"]),
             data["address"],
             data["latestrole"],
             data["education"],

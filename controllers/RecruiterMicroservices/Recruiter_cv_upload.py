@@ -2,6 +2,7 @@ import os
 import re
 import uuid
 import json
+# pyrefly: ignore [missing-import]
 import fitz  
 import smtplib
 from dotenv import load_dotenv
@@ -181,7 +182,7 @@ def recruiter_upload_cv():
             """
 
             if ACTIVE_LLM == "gemini":
-                model = genai.GenerativeModel("gemini-2.5-flash")
+                model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-3.6-flash"))
                 response = model.generate_content(prompt)
                 raw_text = response.text.strip() if response else "{}"
             else:
@@ -249,7 +250,7 @@ def recruiter_upload_cv():
                 """
 
                 if ACTIVE_LLM == "gemini":
-                    model = genai.GenerativeModel("gemini-2.5-flash")
+                    model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-3.6-flash"))
                     match_response = model.generate_content(match_prompt)
                     match_text = match_response.text.strip()
                 else:

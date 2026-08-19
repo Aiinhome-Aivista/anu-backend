@@ -1,6 +1,7 @@
 import os
 import re
 import uuid
+# pyrefly: ignore [missing-import]
 import fitz  
 import json
 import smtplib
@@ -188,7 +189,7 @@ def upload_cv():
         """
 
         if ACTIVE_LLM == "gemini":
-            model = genai.GenerativeModel("gemini-2.5-flash")  
+            model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-3.6-flash"))  
             response = model.generate_content(prompt)
             raw_text = response.text.strip() if response else "{}"
         else:

@@ -5,7 +5,8 @@ import requests
 from flask import jsonify
 from dotenv import load_dotenv
 from database.db_handler import get_db_connection
-from llm_utils import get_mistral_config
+from llm_utils import get_mistral_config, ACTIVE_LLM
+import google.generativeai as genai
 
 load_dotenv()
 
@@ -39,29 +40,34 @@ def calculate_match_percentage(candidate_skills, job_skills):
         Job Required Skills: {job_skills}
         """
 
-        config = get_mistral_config()
-        payload = {
-            "model": config["model"],
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.3,
-            "stream": False
-        }
-
-        print(f"Calling Mistral API URL: {config['url']}")
-        response = requests.post(config["url"], headers=config["headers"], json=payload)
-        response.raise_for_status()
-
-        result = response.json()
-        
-        if "choices" in result:
-            raw_output = result["choices"][0]["message"]["content"].strip()
-        elif "message" in result:
-            raw_output = result["message"]["content"].strip()
-        elif "response" in result:
-            raw_output = result["response"].strip()
+        if ACTIVE_LLM == "gemini":
+            model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-3.6-flash"))
+            response = model.generate_content(prompt)
+            raw_output = response.text.strip()
         else:
-            print(f"Unexpected API response format: {result}")
-            return 0.0
+            config = get_mistral_config()
+            payload = {
+                "model": config["model"],
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+                "stream": False
+            }
+
+            print(f"Calling Mistral API URL: {config['url']}")
+            response = requests.post(config["url"], headers=config["headers"], json=payload)
+            response.raise_for_status()
+
+            result = response.json()
+            
+            if "choices" in result:
+                raw_output = result["choices"][0]["message"]["content"].strip()
+            elif "message" in result:
+                raw_output = result["message"]["content"].strip()
+            elif "response" in result:
+                raw_output = result["response"].strip()
+            else:
+                print(f"Unexpected API response format: {result}")
+                return 0.0
 
         # Extract only numeric part (e.g. “85%” or “85.3”)
         match = re.search(r"(\d+(\.\d+)?)", raw_output)

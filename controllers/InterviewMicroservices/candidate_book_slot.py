@@ -153,7 +153,7 @@ def send_interview_emails(candidate_email, candidate_first_name, candidate_name,
     )
 
     if not meet_link :
-        meet_link = "https://meet.google.com/"  # fallback in case of API error
+        meet_link = "https://meet.google.com/bpq-mjdk-wqt"  # fallback dummy link
 
     # ---------- Candidate Email ----------
     candidate_subject = f"Interview Scheduled for {job_role} – on {date}"

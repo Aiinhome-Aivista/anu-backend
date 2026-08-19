@@ -17,8 +17,11 @@ from datetime import datetime, timedelta
 from flask import request, jsonify, current_app
 from database.db_handler import get_db_connection
 from llm_utils import get_mistral_config
+import google.generativeai as genai
 
 load_dotenv()
+
+ACTIVE_LLM = str(os.getenv("ACTIVE_LLM", "")).strip().lower()
 
 BASE_URL = os.getenv("BASE_URL")
 
@@ -277,29 +280,38 @@ def start_assessment():
         """
 
         # -----------------------------
-        # Call Mistral API
+        # Call LLM API
         # -----------------------------
-        config = get_mistral_config()
-        payload = {
-            "model": config["model"],
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.7,
-            "stream": False
-        }
-
-        response = requests.post(config["url"], headers=config["headers"], json=payload)
-        response.raise_for_status()
-        result = response.json()
-
         question_text = None
-        if "choices" in result and len(result["choices"]) > 0:
-            question_text = result["choices"][0]["message"]["content"].strip()
-        elif "message" in result:
-            question_text = result["message"]["content"].strip()
-        elif "response" in result:
-            question_text = result["response"].strip()
-        elif "output" in result:
-            question_text = result["output"].strip()
+        
+        if ACTIVE_LLM == "gemini":
+            try:
+                model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-3.6-flash"))
+                response = model.generate_content(prompt)
+                question_text = response.text.strip()
+            except Exception as e:
+                print("Gemini generation failed:", e)
+        else:
+            config = get_mistral_config()
+            payload = {
+                "model": config["model"],
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.7,
+                "stream": False
+            }
+
+            response = requests.post(config["url"], headers=config["headers"], json=payload)
+            response.raise_for_status()
+            result = response.json()
+
+            if "choices" in result and len(result["choices"]) > 0:
+                question_text = result["choices"][0]["message"]["content"].strip()
+            elif "message" in result:
+                question_text = result["message"]["content"].strip()
+            elif "response" in result:
+                question_text = result["response"].strip()
+            elif "output" in result:
+                question_text = result["output"].strip()
 
         if not question_text:
             return jsonify({
