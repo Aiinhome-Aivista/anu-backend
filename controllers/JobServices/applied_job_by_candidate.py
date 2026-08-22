@@ -18,7 +18,7 @@ def applied_job_by_candidate():
 
         # Connect to DB
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
 
         # Fetch candidate score
         cursor.execute("""
