@@ -267,16 +267,16 @@ def start_assessment():
         # 3. **Do not** include follow-up questions, examples, or explanations.
         # 4. **Output only the next question** — nothing else.
         # 5. Keep tone friendly, professional, and conversational.
-        1. Ask **exactly ONE short question** (1–2 sentences) based on the candidate’s previous answer.
-        2. Follow this sequence: Education → Experience → Skills → Technical → Hobbies/Personality.
-        3. **Do NOT mention or refer to any grades, marks, percentages, CGPA, GPA, or scores — focus on ideas, experiences, or skills.**
-        4. **Do not** include follow-up questions, examples, or explanations.
-        5. **Output only the next question** — nothing else.
+        1. You may acknowledge the candidate's previous answer briefly and naturally (e.g., "That's interesting!", "Great!"), just like a real human interviewer would.
+        2. Then, ask **exactly ONE short question** (1–2 sentences) based on their answer.
+        3. Follow this sequence: Education → Experience → Skills → Technical → Hobbies/Personality.
+        4. **Do NOT mention or refer to any grades, marks, percentages, CGPA, GPA, or scores — focus on ideas, experiences, or skills.**
+        5. **Do not** include follow-up questions, examples, or explanations.
         6. Keep tone friendly, professional, and conversational.
-        7. **Do not** add explanations, comments, examples, or multiple questions.
+        7. **Do not** add comments or multiple questions.
         8. **Do not** use abbreviations or expansions in parentheses.
         9. When discussing technologies, focus on types or roles, not specific names.
-
+        10. **CRITICAL: DO NOT use robotic transition phrases like "Here is your next question:", "Based on your answer:", or "My next question is:". Transition naturally into the question.**
         """
 
         # -----------------------------
@@ -312,6 +312,12 @@ def start_assessment():
                 question_text = result["response"].strip()
             elif "output" in result:
                 question_text = result["output"].strip()
+
+        if question_text:
+            # Just remove any leftover robotic phrases explicitly if the LLM disobeys
+            import re
+            question_text = re.sub(r'(Here is your next question:|Based on your previous answer:|My next question is:)\s*', '', question_text, flags=re.IGNORECASE).strip()
+            question_text = question_text.replace('"', '').replace('---', '').strip()
 
         if not question_text:
             return jsonify({

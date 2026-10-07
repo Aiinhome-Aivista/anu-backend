@@ -68,6 +68,7 @@ def candidate_details():
                 SELECT score, question_answer
                 FROM assessment_session_log
                 WHERE candidate_id = %s AND job_id = %s
+                ORDER BY created_at DESC LIMIT 1
             """, (candidate_id, jobId))
             aiscreening = cursor.fetchone()
             raw_details =  None

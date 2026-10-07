@@ -172,18 +172,21 @@ def upload_cv():
             - Use *"Mrs."* for married female candidates.
             - Use *"Ms."* for unmarried female candidates or if marital status is unclear but name suggests female.
             - If gender cannot be determined, leave it empty.
-            3. For "experience", **calculate or estimate the total professional experience in years**, using date ranges, durations, or job history if available.
-            - If the end date is "Present" or "Current", calculate experience up to the current date.
-            - If exact duration cannot be determined, return "None".
-            - Example valid values for experience: "2 ", "3.5 ", or "None".
-            4. 4. For "skills":
+            3. For "experience", **calculate the total professional work experience in years**, using the earliest start date and the latest end date in the employment history.
+            - Do NOT sum up overlapping project durations. 
+            - Example: If the first job started in Sep 2022 and the current job is "Present", the total experience is roughly 4 years.
+            - Output only the number (e.g., "4" or "4.5"), or "None" if no work experience is found.
+            4. For "skills":
                 - Extract only *technical skills* mentioned in the CV.
                 - These can appear under headings such as: Skills, Technical Skills, Core Competencies, Key Expertise, Technical Proficiency, or similar.
                 - Include items like programming languages, frameworks, tools, libraries, databases, cloud platforms, or software.
                 - Exclude non-technical items such as spoken or written languages (e.g., English, Hindi, Bengali, etc.).
                 - Clean and join all valid skills into a *comma-separated string*, e.g.:
                   "Azure Data Factory, Azure SQL, Node JS, PHP, JavaScript, Angular, React JS, MS SQL, MySQL, SSMS"
-            5. Ensure JSON is valid and machine-readable.
+            5. For "latestrole": Extract the most recent company and job title, optionally with duration. Example: "Aiinhome Technologies - Software Developer (4 years)".
+            6. For "designation": Extract the current or most recent job title. Example: "Software Developer".
+            7. For "education": Extract all educational degrees and institutions. Join them with a semicolon. Example: "Master of Computer Applications (MCA) Vidyasagar University; Bachelor of Computer Applications (BCA)".
+            8. Ensure JSON is valid and machine-readable.
         CV Text:
         {text_content}
         """
