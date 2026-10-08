@@ -166,8 +166,8 @@ def end_interview():
                 }
             }), 200
 
-        #  If active, evaluate and end
-        if current_status == "active":
+        #  If active or completed, evaluate and end
+        if current_status in ["active", "completed"]:
             answers_data = session_row.get("question_answer")
 
             # Convert JSON string from DB

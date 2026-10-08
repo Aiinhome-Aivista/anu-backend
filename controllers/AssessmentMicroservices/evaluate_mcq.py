@@ -48,7 +48,10 @@ def evaluate_mcq():
         for item in mcq_data:
             question = next((mcq for mcq in db_mcqs if mcq["id"] == item["id"]), None)
             if question:
-                item_score = 5 if question["correctOption"].strip().lower() == item["selectedOption"].strip().lower() else 0
+                correct_opt = str(question.get("correctOption", "") or "").strip().lower()
+                selected_opt = str(item.get("selectedOption", "") or "").strip().lower()
+                
+                item_score = 5 if (correct_opt and correct_opt == selected_opt) else 0
                 item["score"] = item_score
                 if item_score == 5:
                     correct_answers += 1

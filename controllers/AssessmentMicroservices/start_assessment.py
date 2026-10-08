@@ -211,13 +211,51 @@ def start_assessment():
                 remaining_time_str = f"{SESSION_DURATION_MINUTES:02d}:00"
 
         if session_id and not session_valid:
-            # Session expired
+            # Session expired: Return graceful closing message
+            closing_msg = f"Thank you, {candidate_name}! Your time is up and the interview is complete. Best of luck for the next steps!"
+            
+            # Generate Neural Audio for closing message
+            audio_dir = os.path.join(current_app.root_path, "static", "audio")
+            os.makedirs(audio_dir, exist_ok=True)
+            audio_filename = f"closing_{candidate_id}_{job_id}_{os.getpid()}.mp3"
+            audio_path = os.path.join(audio_dir, audio_filename)
+            asyncio.run(generate_neural_audio(closing_msg, audio_path))
+            audio_url = f"{BASE_URL}/static/audio/{audio_filename}"
+
+            # Update DB to completed and add final answer/question
+            if session_row:
+                existing_log = json.loads(session_row["question_answer"])
+                if last_answer and existing_log and existing_log[-1].get("answer", "") == "":
+                    existing_log[-1]["answer"] = last_answer
+                elif last_answer:
+                    existing_log.append({"questionNo": len(existing_log) + 1, "question": "", "answer": last_answer})
+                
+                existing_log.append({
+                    "questionNo": len(existing_log) + 1,
+                    "question": closing_msg,
+                    "answer": ""
+                })
+                cursor.execute("""
+                    UPDATE assessment_session_log
+                    SET question_answer = %s, status = %s
+                    WHERE id = %s
+                """, (json.dumps(existing_log), "completed", session_row["id"]))
+                conn.commit()
+
             return jsonify({
-                "status": "failed",
-                "statusCode": 440,
-                "message": f"Hi {candidate_name}, your interview has ended. Thank you for taking the time to speak with us. Wishing you all the best for your future!",
-                "isSuccess": False
-            }), 440
+                "status": "success",
+                "statusCode": 200,
+                "message": "Assessment completed.",
+                "isSuccess": True,
+                "result": {
+                    "candidateId": candidate_id,
+                    "jobId": job_id,
+                    "sessionId": session_id,
+                    "question": closing_msg,
+                    "audioUrl": audio_url,
+                    "remainingTime": "00:00"
+                }
+            }), 200
 
 
         # -----------------------------
@@ -225,7 +263,8 @@ def start_assessment():
         # -----------------------------
         if last_answer == "":
             prompt = f"""
-        You are a friendly HR interviewer conducting a structured job interview.
+        You are a strict roleplaying AI. You must ONLY output the exact spoken words of the HR interviewer. 
+        DO NOT include any internal thoughts, explanations, tips, or metadata like "Here is the question".
 
         Candidate Info:
         Name: {candidate_name}
@@ -234,24 +273,21 @@ def start_assessment():
         Skills: {skills}
 
         --- INSTRUCTIONS ---
-        # 1. Greet the candidate naturally (e.g.,"Hi, I’m Subho, from your recruitment team — nice to meet you! {candidate_name}").
-        # 2. Then ask **exactly ONE question** about their education, in **1-2 short sentences only**.
-        # 3. **Do not** add explanations, comments, examples, or multiple questions.
-        # 4. **Output only the question text** — no other sentences or instructions.
-        # 5. Keep tone friendly, professional, and conversational.
         1. Greet the candidate naturally (e.g., "Hi, I’m Subho, from your recruitment team — nice to meet you, {candidate_name}!").
-        2. Then ask **exactly ONE question** about their education background — such as what they studied, their college experience, or subjects they enjoyed.
-        3. **Do NOT mention or refer to any grades, marks, percentages, CGPA, GPA, or scores — focus only on their learning, projects, or experiences.**
-        4. **Do not** add explanations, comments, examples, or multiple questions.
-        5. **Output only the question text** — nothing else.
-        6. Keep the tone friendly, professional, and conversational.
-        7. **Do not** add explanations, comments, examples, or multiple questions.
-        8. **Do not** use abbreviations or expansions in parentheses.
-        9. When discussing technologies, focus on types or roles, not specific names.
+        2. Ask **exactly ONE short question** about their education background.
+        3. Do NOT mention grades, marks, or scores. Focus on learning.
+        4. DO NOT use asterisks (*) or any markdown formatting. Output plain text only.
+
+        --- EXAMPLE DESIRED OUTPUT ---
+        Hi {candidate_name}, I'm Subho from the recruitment team. It's great to meet you! To start off, what subjects did you enjoy most during your studies?
+        --- END OF EXAMPLE ---
+
+        YOUR TURN (OUTPUT ONLY THE EXACT DIALOGUE):
         """
         else:
             prompt = f"""
-        You are a friendly HR interviewer continuing a structured job interview.
+        You are a strict roleplaying AI. You must ONLY output the exact spoken words of the HR interviewer. 
+        DO NOT include any internal thoughts, explanations, tips, or metadata like "Explanation:".
 
         Candidate Info:
         Name: {candidate_name}
@@ -262,21 +298,17 @@ def start_assessment():
         The candidate just answered: "{last_answer}"
 
         --- INSTRUCTIONS ---
-        # 1. Ask **exactly ONE short question** (1-2 sentences) based on the candidate’s previous answer.
-        # 2. Follow this sequence: Education → Experience → Skills → Technical → Hobbies/Personality.
-        # 3. **Do not** include follow-up questions, examples, or explanations.
-        # 4. **Output only the next question** — nothing else.
-        # 5. Keep tone friendly, professional, and conversational.
-        1. You may acknowledge the candidate's previous answer briefly and naturally (e.g., "That's interesting!", "Great!"), just like a real human interviewer would.
-        2. Then, ask **exactly ONE short question** (1–2 sentences) based on their answer.
-        3. Follow this sequence: Education → Experience → Skills → Technical → Hobbies/Personality.
-        4. **Do NOT mention or refer to any grades, marks, percentages, CGPA, GPA, or scores — focus on ideas, experiences, or skills.**
-        5. **Do not** include follow-up questions, examples, or explanations.
-        6. Keep tone friendly, professional, and conversational.
-        7. **Do not** add comments or multiple questions.
-        8. **Do not** use abbreviations or expansions in parentheses.
-        9. When discussing technologies, focus on types or roles, not specific names.
-        10. **CRITICAL: DO NOT use robotic transition phrases like "Here is your next question:", "Based on your answer:", or "My next question is:". Transition naturally into the question.**
+        1. Acknowledge the answer naturally with 1 short sentence (e.g., "That's interesting!").
+        2. Ask **exactly ONE short question** (1-2 sentences) based on their answer.
+        3. Follow this sequence: Education → Experience → Skills → Technical → Hobbies.
+        4. Keep it conversational. Do NOT use transition phrases like "Here is your next question:".
+        5. DO NOT use asterisks (*) or any markdown formatting. Output plain text only.
+
+        --- EXAMPLE DESIRED OUTPUT ---
+        That's great to hear! Since you enjoyed database management, could you tell me about a project where you applied those DML skills?
+        --- END OF EXAMPLE ---
+
+        YOUR TURN (OUTPUT ONLY THE EXACT DIALOGUE):
         """
 
         # -----------------------------

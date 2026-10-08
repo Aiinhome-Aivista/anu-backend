@@ -24,7 +24,7 @@ def login_recruiter():
             return jsonify({
                 "status": "failed",
                 "statusCode": 404,
-                "message": "Login failed. email not found.",
+                "message": "You have not registered yet. Please register first.",
                 "isSuccess": False
             }), 404
 
